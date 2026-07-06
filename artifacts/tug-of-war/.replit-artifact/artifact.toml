@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Halat Çekme Oyunu"
+version = "1.0.0"
+id = "artifacts/tug-of-war"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23954
+
+[services.development]
+run = "pnpm --filter @workspace/tug-of-war run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tug-of-war", "run", "build" ]
+publicDir = "artifacts/tug-of-war/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23954"
+BASE_PATH = "/"

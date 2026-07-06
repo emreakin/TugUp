@@ -1,0 +1,11 @@
+diff --git a/package.json b/package.json
+--- a/package.json
++++ b/package.json
+@@ -51,7 +51,7 @@
+       "compileSdk": 34,
+       "buildTools": "34.0.0",
+-      "googleMobileAds": "25.4.0",
++      "googleMobileAds": "24.9.0",
+       "googleUmp": "4.0.0"
+     }
+   },

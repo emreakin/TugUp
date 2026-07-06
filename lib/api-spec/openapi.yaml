@@ -1,0 +1,131 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: votes
+    description: Tug of war voting
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /votes/{matchupId}:
+    get:
+      operationId: getVotes
+      tags: [votes]
+      summary: Get current vote state for a matchup
+      parameters:
+        - name: matchupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current vote state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteState"
+    post:
+      operationId: castVote
+      tags: [votes]
+      summary: Cast a vote for a side
+      parameters:
+        - name: matchupId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CastVoteBody"
+      responses:
+        "200":
+          description: Vote result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteResult"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    VoteState:
+      type: object
+      properties:
+        matchupId:
+          type: string
+        offset:
+          type: integer
+        leftPulls:
+          type: integer
+        rightPulls:
+          type: integer
+        voteDate:
+          type: string
+      required:
+        - matchupId
+        - offset
+        - leftPulls
+        - rightPulls
+        - voteDate
+    CastVoteBody:
+      type: object
+      properties:
+        side:
+          type: string
+          enum: [left, right]
+      required:
+        - side
+    VoteResult:
+      type: object
+      properties:
+        matchupId:
+          type: string
+        offset:
+          type: integer
+        leftPulls:
+          type: integer
+        rightPulls:
+          type: integer
+        voteDate:
+          type: string
+        accepted:
+          type: boolean
+        cooldownSeconds:
+          type: number
+          nullable: true
+      required:
+        - matchupId
+        - offset
+        - leftPulls
+        - rightPulls
+        - voteDate
+        - accepted
+        - cooldownSeconds
