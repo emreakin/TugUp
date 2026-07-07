@@ -4,11 +4,9 @@
     "requireCommit": false
   },
   "build": {
-    "base": {
-      "node": "22.14.0",
-      "pnpm": "11.1.2"
-    },
     "development": {
+      "node": "22.14.0",
+      "pnpm": "10.15.1",
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
@@ -19,6 +17,8 @@
       }
     },
     "preview": {
+      "node": "22.14.0",
+      "pnpm": "10.15.1",
       "distribution": "internal",
       "android": {
         "buildType": "apk",
@@ -30,6 +30,8 @@
       }
     },
     "production": {
+      "node": "22.14.0",
+      "pnpm": "10.15.1",
       "android": {
         "buildType": "app-bundle"
       },

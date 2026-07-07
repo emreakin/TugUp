@@ -791,7 +791,7 @@ export default function QuickGameScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backText}>← Ana Menü</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>⚡ Hızlı Oyun</Text>
+          <Text style={styles.headerTitle}>⚡ Quick Game</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -943,7 +943,7 @@ export default function QuickGameScreen() {
           <View style={styles.tutorialOverlay}>
             <View style={styles.tutorialCard}>
               <Text style={styles.tutorialEmoji}>⚡</Text>
-              <Text style={styles.tutorialTitle}>Hızlı Oyun'a Hoş Geldin!</Text>
+              <Text style={styles.tutorialTitle}>Welcome to Quick Game!</Text>
 
               <View style={styles.tutorialRow}>
                 <Text style={styles.tutorialBullet}>✨</Text>
@@ -1023,7 +1023,7 @@ export default function QuickGameScreen() {
           >
             <Text style={styles.backText}>← Ana Menü</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>⚡ Hızlı Oyun</Text>
+          <Text style={styles.headerTitle}>⚡ Quick Game</Text>
           <View style={styles.headerSpacer} />
         </View>
 

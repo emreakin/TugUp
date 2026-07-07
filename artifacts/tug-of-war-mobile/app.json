@@ -2,7 +2,7 @@
   "expo": {
     "name": "TugUp",
     "slug": "tug-of-war-mobile",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tug-of-war-mobile",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.tugup.game",
-      "versionCode": 5
+      "versionCode": 6
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -51,6 +51,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "148e2caa-5d9f-4407-935c-1073e6a17339"
+      }
     }
   }
 }

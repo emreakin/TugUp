@@ -17,7 +17,7 @@ const { width } = Dimensions.get("window");
 const MODE_CONFIG = [
   {
     key: "quick" as const,
-    label: "Hızlı Oyun",
+    label: "Quick Game",
     emoji: "⚡",
     color: "#ef4444",
     gradient: ["#ef4444", "#dc2626"],
@@ -95,7 +95,7 @@ export default function HomeScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>v0.0.5 · TugUp</Text>
+        <Text style={styles.footerText}>v0.0.6 · TugUp</Text>
       </View>
     </View>
   );
