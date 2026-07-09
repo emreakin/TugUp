@@ -11,14 +11,29 @@ if (!process.env.DATABASE_URL) {
 }
 
 const connectionString = process.env.DATABASE_URL;
-const needsInsecureSsl =
-  process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "false" ||
-  connectionString.includes("aivencloud.com");
 
-export const pool = new Pool({
-  connectionString,
-  ...(needsInsecureSsl ? { ssl: { rejectUnauthorized: false } } : {}),
-});
+function createPool() {
+  const needsInsecureSsl =
+    process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "false" ||
+    connectionString.includes("aivencloud.com");
+
+  if (!needsInsecureSsl) {
+    return new Pool({ connectionString });
+  }
+
+  // Aiven URLs include sslmode=require which makes node-pg verify certs strictly.
+  // Strip sslmode and use explicit ssl config instead.
+  const cleanUrl = connectionString
+    .replace(/[?&]sslmode=[^&]*/g, "")
+    .replace(/\?$/, "");
+
+  return new Pool({
+    connectionString: cleanUrl,
+    ssl: { rejectUnauthorized: false },
+  });
+}
+
+export const pool = createPool();
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

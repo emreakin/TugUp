@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "a2ef09b5-9e6d-4e0b-962d-e3917608bb7d"
+      }
+    },
+    "android": {
+      "package": "com.tugup.game"
+    }
+  }
+}

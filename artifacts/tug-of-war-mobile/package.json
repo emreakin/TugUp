@@ -1,6 +1,7 @@
 {
   "name": "@workspace/tug-of-war-mobile",
   "version": "0.0.6",
+  "packageManager": "pnpm@10.15.1",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -8,6 +9,7 @@
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "eas-build-pre-install": "corepack enable && corepack prepare pnpm@10.15.1 --activate",
     "eas-build-post-install": "node scripts/patch-google-ads.js"
   },
   "devDependencies": {

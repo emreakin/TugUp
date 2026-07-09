@@ -54,12 +54,17 @@ seedDefaultMatchups().catch(() => {});
 
 // GET /api/matchups
 router.get("/", async (_req, res) => {
-  const rows = await db
-    .select()
-    .from(matchupsTable)
-    .orderBy(asc(matchupsTable.sortOrder));
+  try {
+    const rows = await db
+      .select()
+      .from(matchupsTable)
+      .orderBy(asc(matchupsTable.sortOrder));
 
-  res.json(rows);
+    res.json(rows);
+  } catch (err) {
+    console.error("matchups error", err);
+    res.status(500).json({ error: "Sunucu hatası." });
+  }
 });
 
 export default router;
