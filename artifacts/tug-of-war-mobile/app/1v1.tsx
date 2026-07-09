@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  Share,
   StatusBar,
   StyleSheet,
   Text,
@@ -18,6 +19,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch, getApiUrl } from "@/lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────
 
@@ -29,20 +32,10 @@ const MAX_TRANSLATION = WINDOW_WIDTH / 2 - ROPE_PAD - CHAR_WIDTH / 2;
 const CHARACTER_IMG = require("@/assets/images/character.png");
 const ROPE_IMG = require("@/assets/images/rope.png");
 
-function getApiUrl(): string {
-  if (Platform.OS === "web") return "";
-  return (
-    process.env.EXPO_PUBLIC_API_BASE ??
-    `https://${
-      process.env.EXPO_PUBLIC_REPLIT_DEV_DOMAIN ??
-      "72a67990-7136-40a7-a2ca-48f1c4842176-00-26avhjd9y0o9l.janeway.replit.dev"
-    }`
-  );
-}
-
 // ─── Types ─────────────────────────────────────────────────────────
 
-type Phase = "name_input" | "connecting" | "waiting" | "countdown" | "playing" | "ended";
+type Phase = "mode_select" | "name_input" | "connecting" | "waiting" | "countdown" | "playing" | "ended";
+type MatchMode = "random" | "invite";
 
 interface MatchupInfo {
   id: string;
@@ -53,6 +46,16 @@ interface MatchupInfo {
   emoji: string;
   winThreshold: number;
 }
+
+const FIXED_MATCHUP_LOCAL: MatchupInfo = {
+  id: "fixed",
+  leftTeam: "Takım A",
+  rightTeam: "Takım B",
+  leftColor: "#ef4444",
+  rightColor: "#3b82f6",
+  emoji: "⚔️",
+  winThreshold: 10,
+};
 
 // ─── Character Component ──────────────────────────────────────────
 
@@ -112,9 +115,19 @@ export default function OneVsOneScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+  const { token, ensureSession, playerToken: authPlayerToken } = useAuth();
+  const params = useLocalSearchParams<{
+    joinRoomId?: string;
+    joinSide?: string;
+    joinStatus?: string;
+    joinOpponent?: string;
+    joinPlayerToken?: string;
+  }>();
 
   // ── Phase & matchmaking state ───────────────────────────────────────
-  const [phase, setPhase] = useState<Phase>("name_input");
+  const [phase, setPhase] = useState<Phase>("mode_select");
+  const [matchMode, setMatchMode] = useState<MatchMode>("random");
+  const [gameInviteShare, setGameInviteShare] = useState<string | null>(null);
   const [matchup, setMatchup] = useState<MatchupInfo | null>(null);
   const [mySide, setMySide] = useState<"left" | "right">("left");
   const [countdownNum, setCountdownNum] = useState(5);
@@ -159,7 +172,7 @@ export default function OneVsOneScreen() {
   const roomIdRef = useRef<string | null>(null);
   const playerTokenRef = useRef<string | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const phaseRef = useRef<Phase>("name_input");
+  const phaseRef = useRef<Phase>("mode_select");
   // Always-current ref so the interval never calls a stale closure
   const pollStateRef = useRef<() => Promise<void>>(async () => {});
 
@@ -297,6 +310,35 @@ export default function OneVsOneScreen() {
     pollStateRef.current = pollState;
   }, [pollState]);
 
+  // ── Join from game invite deep link ───────────────────────────────
+  useEffect(() => {
+    const roomId = params.joinRoomId;
+    const playerToken = params.joinPlayerToken;
+    if (!roomId || !playerToken) return;
+
+    roomIdRef.current = roomId;
+    playerTokenRef.current = playerToken;
+    AsyncStorage.setItem("player_token", playerToken).catch(() => {});
+
+    const side = params.joinSide === "left" ? "left" : "right";
+    setMySide(side);
+    setMatchup(FIXED_MATCHUP_LOCAL);
+    if (params.joinOpponent) setOpponentName(params.joinOpponent);
+
+    const status = params.joinStatus ?? "waiting";
+    if (status === "countdown") {
+      setPhase("countdown");
+      setCountdownNum(5);
+    } else if (status === "playing") {
+      setPhase("playing");
+    } else {
+      setPhase("waiting");
+    }
+
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollIntervalRef.current = setInterval(() => { pollStateRef.current(); }, 500);
+  }, [params.joinRoomId, params.joinPlayerToken, params.joinSide, params.joinStatus, params.joinOpponent]);
+
   // ── Connect / Join ──────────────────────────────────────────────
   const connect = useCallback(async () => {
     setPhase("connecting");
@@ -306,53 +348,79 @@ export default function OneVsOneScreen() {
     setRightPulls(0);
     setWinner(null);
     setOpponentName(null);
+    setGameInviteShare(null);
     resetAnimations();
 
     try {
-      // Load existing token
-      let token = await AsyncStorage.getItem("player_token");
+      const session = await ensureSession(playerName || "Oyuncu");
+      const tokenToUse = session.playerToken ?? authPlayerToken;
+      let token = tokenToUse ?? (await AsyncStorage.getItem("player_token"));
 
-      const res = await fetch(`${getApiUrl()}/api/game/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: playerName || "Oyuncu", playerToken: token }),
-      });
+      if (matchMode === "invite") {
+        const data = await apiFetch<{
+          roomId: string;
+          side: "left" | "right";
+          status: string;
+          opponentName: string | null;
+          playerToken: string;
+          shareMessage: string;
+        }>("/api/game/create-invite", {
+          method: "POST",
+          token: session.token,
+          body: JSON.stringify({ name: playerName || "Oyuncu" }),
+        });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setErrorMsg(err.message ?? "Sunucu hatası.");
-        setPhase("connecting");
-        return;
-      }
+        roomIdRef.current = data.roomId;
+        playerTokenRef.current = data.playerToken;
+        await AsyncStorage.setItem("player_token", data.playerToken);
+        setGameInviteShare(data.shareMessage);
 
-      const data = await res.json();
-      roomIdRef.current = data.roomId;
-      playerTokenRef.current = data.playerToken;
-      await AsyncStorage.setItem("player_token", data.playerToken);
-
-      setMySide(data.side);
-      if (data.matchup) setMatchup(data.matchup);
-      if (data.opponentName) setOpponentName(data.opponentName);
-
-      if (data.status === "waiting") {
+        setMySide(data.side);
+        setMatchup(FIXED_MATCHUP_LOCAL);
+        if (data.opponentName) setOpponentName(data.opponentName);
         setPhase("waiting");
-      } else if (data.status === "countdown") {
-        setPhase("countdown");
-        setCountdownNum(5);
-      } else if (data.status === "playing") {
-        setPhase("playing");
-      } else if (data.status === "ended") {
-        setPhase("ended");
+      } else {
+        const res = await fetch(`${getApiUrl()}/api/game/join`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: playerName || "Oyuncu", playerToken: token }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          setErrorMsg(err.message ?? "Sunucu hatası.");
+          setPhase("name_input");
+          return;
+        }
+
+        const data = await res.json();
+        roomIdRef.current = data.roomId;
+        playerTokenRef.current = data.playerToken;
+        await AsyncStorage.setItem("player_token", data.playerToken);
+
+        setMySide(data.side);
+        if (data.matchup) setMatchup(data.matchup);
+        if (data.opponentName) setOpponentName(data.opponentName);
+
+        if (data.status === "waiting") {
+          setPhase("waiting");
+        } else if (data.status === "countdown") {
+          setPhase("countdown");
+          setCountdownNum(5);
+        } else if (data.status === "playing") {
+          setPhase("playing");
+        } else if (data.status === "ended") {
+          setPhase("ended");
+        }
       }
 
-      // Start polling — use ref so interval always calls the latest pollState
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = setInterval(() => { pollStateRef.current(); }, 500);
     } catch (err) {
-      setErrorMsg("Sunucuya bağlanılamadı.");
-      setPhase("connecting");
+      setErrorMsg(err instanceof Error ? err.message : "Sunucuya bağlanılamadı.");
+      setPhase("name_input");
     }
-  }, [playerName, pollState, resetAnimations]);
+  }, [playerName, resetAnimations, matchMode, ensureSession, authPlayerToken]);
 
   // ── Play again — clear token so server creates a brand-new room ───
   const playAgain = useCallback(async () => {
@@ -452,14 +520,57 @@ export default function OneVsOneScreen() {
     return () => clearInterval(timer);
   }, [phase]);
 
+  // ── Mode select screen ─────────────────────────────────────────
+  if (phase === "mode_select") {
+    return (
+      <View style={[styles.container, { paddingTop: topInset, paddingBottom: bottomInset }]}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <Text style={styles.backText}>← Ana Menü</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>1v1</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.nameInputContent}>
+          <Text style={styles.nameInputEmoji}>👥</Text>
+          <Text style={styles.nameInputTitle}>Nasıl Oynamak İstersin?</Text>
+          <Text style={styles.nameInputSubtitle}>Rastgele rakip bul veya arkadaşını davet et</Text>
+
+          <Pressable
+            style={({ pressed }) => [styles.modeCard, pressed && styles.modeCardPressed]}
+            onPress={() => { setMatchMode("random"); setPhase("name_input"); }}
+          >
+            <Text style={styles.modeCardEmoji}>🎲</Text>
+            <View style={styles.modeCardText}>
+              <Text style={styles.modeCardTitle}>Rastgele Eşleş</Text>
+              <Text style={styles.modeCardDesc}>Online bir rakiple anında eşleş</Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.modeCard, styles.modeCardInvite, pressed && styles.modeCardPressed]}
+            onPress={() => { setMatchMode("invite"); setPhase("name_input"); }}
+          >
+            <Text style={styles.modeCardEmoji}>🔗</Text>
+            <View style={styles.modeCardText}>
+              <Text style={styles.modeCardTitle}>Arkadaşını Davet Et</Text>
+              <Text style={styles.modeCardDesc}>Link paylaş, arkadaşın katılsın</Text>
+            </View>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   // ── Name input screen ────────────────────────────────────────
   if (phase === "name_input") {
     return (
       <View style={[styles.container, { paddingTop: topInset, paddingBottom: bottomInset }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.header}>
-          <Pressable onPress={() => { const rid = roomIdRef.current; const tok = playerTokenRef.current; if (rid && tok) { fetch(`${getApiUrl()}/api/game/leave/${rid}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerToken: tok }) }).catch(() => {}); } router.back(); }} style={styles.backBtn}>
-            <Text style={styles.backText}>← Ana Menü</Text>
+          <Pressable onPress={() => setPhase("mode_select")} style={styles.backBtn}>
+            <Text style={styles.backText}>← Geri</Text>
           </Pressable>
           <Text style={styles.headerTitle}>1v1</Text>
           <View style={styles.headerSpacer} />
@@ -467,7 +578,11 @@ export default function OneVsOneScreen() {
         <View style={styles.nameInputContent}>
           <Text style={styles.nameInputEmoji}>🎮</Text>
           <Text style={styles.nameInputTitle}>1v1</Text>
-          <Text style={styles.nameInputSubtitle}>Mücadeleye katılmadan önce adını gir</Text>
+          <Text style={styles.nameInputSubtitle}>
+            {matchMode === "invite"
+              ? "Davet linkini paylaşmak için adını gir"
+              : "Mücadeleye katılmadan önce adını gir"}
+          </Text>
           <TextInput
             style={styles.nameInputField}
             placeholder="Kullanıcı Adı"
@@ -486,7 +601,9 @@ export default function OneVsOneScreen() {
             onPress={connect}
             disabled={!playerName.trim()}
           >
-            <Text style={styles.nameInputBtnText}>Başla 💪</Text>
+            <Text style={styles.nameInputBtnText}>
+              {matchMode === "invite" ? "Davet Oluştur 🔗" : "Başla 💪"}
+            </Text>
           </Pressable>
         </View>
 
@@ -653,8 +770,18 @@ export default function OneVsOneScreen() {
 
         {phase === "waiting" && (
           <View style={styles.waitingFooter}>
+            {gameInviteShare ? (
+              <Pressable
+                style={styles.shareInviteBtn}
+                onPress={() => Share.share({ message: gameInviteShare })}
+              >
+                <Text style={styles.shareInviteBtnText}>Davet Linkini Paylaş</Text>
+              </Pressable>
+            ) : null}
             <Text style={styles.waitingFooterText}>
-              Eşleşme aranıyor… Bu ekranda kal!
+              {gameInviteShare
+                ? "Arkadaşın linki açınca oyun başlayacak. Bu ekranda kal!"
+                : "Eşleşme aranıyor… Bu ekranda kal!"}
             </Text>
           </View>
         )}
@@ -830,6 +957,35 @@ const styles = StyleSheet.create({
   nameInputBtn: { backgroundColor: "#ef4444", borderRadius: 16, paddingVertical: 16, paddingHorizontal: 32, width: "100%", alignItems: "center" },
   nameInputBtnPressed: { opacity: 0.8 },
   nameInputBtnText: { color: "#fff", fontSize: 18, fontWeight: "800", letterSpacing: 1 },
+
+  modeCard: {
+    width: "100%",
+    backgroundColor: "#1e293b",
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  modeCardInvite: { borderColor: "#3b82f6" },
+  modeCardPressed: { opacity: 0.85 },
+  modeCardEmoji: { fontSize: 32, width: 40, textAlign: "center" },
+  modeCardText: { flex: 1 },
+  modeCardTitle: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 17 },
+  modeCardDesc: { color: "#64748b", fontFamily: "Inter_400Regular", fontSize: 13, marginTop: 4 },
+
+  shareInviteBtn: {
+    backgroundColor: "#3b82f6",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    marginBottom: 12,
+    width: "90%",
+    alignItems: "center",
+  },
+  shareInviteBtnText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 },
 
   errorEmoji: { fontSize: 48 },
   errorText: { color: "#ef4444", fontSize: 16, fontWeight: "600", textAlign: "center" },

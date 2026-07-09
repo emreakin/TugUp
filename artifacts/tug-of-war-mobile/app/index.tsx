@@ -95,6 +95,9 @@ export default function HomeScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
+        <Pressable style={styles.friendsBtn} onPress={() => router.push("/friends")}>
+          <Text style={styles.friendsBtnText}>👥 Arkadaşlar</Text>
+        </Pressable>
         <Text style={styles.footerText}>v0.0.6 · TugUp</Text>
       </View>
     </View>
@@ -174,6 +177,21 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginBottom: 24,
+    alignItems: "center",
+    gap: 12,
+  },
+  friendsBtn: {
+    backgroundColor: "#1e293b",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  friendsBtnText: {
+    color: "#94a3b8",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
   },
   footerText: {
     fontSize: 11,

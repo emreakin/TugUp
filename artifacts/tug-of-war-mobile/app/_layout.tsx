@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { initMobileAds } from "@/native/ad-helper";
 
 SplashScreen.preventAutoHideAsync();
@@ -31,6 +32,9 @@ function RootLayoutNav() {
       <Stack.Screen name="quick-game" />
       <Stack.Screen name="online" />
       <Stack.Screen name="1v1" />
+      <Stack.Screen name="friends" />
+      <Stack.Screen name="invite/friend/[id]" />
+      <Stack.Screen name="invite/game/[id]" />
       <Stack.Screen name="game" />
     </Stack>
   );
@@ -55,9 +59,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <RootLayoutNav />
-          </GestureHandlerRootView>
+          <AuthProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <RootLayoutNav />
+            </GestureHandlerRootView>
+          </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

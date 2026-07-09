@@ -10,7 +10,15 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const connectionString = process.env.DATABASE_URL;
+const needsInsecureSsl =
+  process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "false" ||
+  connectionString.includes("aivencloud.com");
+
+export const pool = new Pool({
+  connectionString,
+  ...(needsInsecureSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+});
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

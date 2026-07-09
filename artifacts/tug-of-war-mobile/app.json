@@ -8,6 +8,10 @@
     "scheme": "tug-of-war-mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "linking": {
+      "scheme": "tug-of-war-mobile",
+      "prefixes": ["tug-of-war-mobile://"]
+    },
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",

@@ -101,11 +101,74 @@ export const gameRoomsTable = pgTable("game_rooms", {
   rightPulls: integer("right_pulls").notNull().default(0),
   winner: text("winner"), // 'left' | 'right'
   countdownStartedAt: timestamp("countdown_started_at", { withTimezone: true }),
+  isPrivate: boolean("is_private").notNull().default(false),
+  hostUserId: text("host_user_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type GameRoom = typeof gameRoomsTable.$inferSelect;
+
+// ── Users & Social ─────────────────────────────────────────────────────────
+export const usersTable = pgTable(
+  "users",
+  {
+    id: text("id").primaryKey(),
+    displayName: text("display_name").notNull().default("Oyuncu"),
+    authProvider: text("auth_provider").notNull().default("guest"), // guest | google
+    authSubject: text("auth_subject"),
+    playerToken: text("player_token").notNull(),
+    friendCode: text("friend_code").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("users_player_token_idx").on(t.playerToken),
+    uniqueIndex("users_friend_code_idx").on(t.friendCode),
+    uniqueIndex("users_auth_provider_subject_idx").on(t.authProvider, t.authSubject),
+  ],
+);
+
+export type User = typeof usersTable.$inferSelect;
+
+// Canonical friendship row — userLowId < userHighId lexicographically
+export const friendshipsTable = pgTable(
+  "friendships",
+  {
+    id: serial("id").primaryKey(),
+    userLowId: text("user_low_id").notNull(),
+    userHighId: text("user_high_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("friendships_pair_idx").on(t.userLowId, t.userHighId)],
+);
+
+export type Friendship = typeof friendshipsTable.$inferSelect;
+
+// One-time friend invite links (share via WhatsApp etc.)
+export const friendInvitesTable = pgTable("friend_invites", {
+  id: text("id").primaryKey(),
+  inviterId: text("inviter_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedBy: text("used_by"),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type FriendInvite = typeof friendInvitesTable.$inferSelect;
+
+// Private 1v1 game invite links
+export const gameInvitesTable = pgTable("game_invites", {
+  id: text("id").primaryKey(),
+  hostUserId: text("host_user_id").notNull(),
+  roomId: text("room_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedBy: text("used_by"),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type GameInvite = typeof gameInvitesTable.$inferSelect;
 
 // ── Weekly Results Archive ─────────────────────────────────────────────────
 // Final snapshot of every matchup after the weekly voting period ends.

@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { db, gameRoomsTable } from "@workspace/db";
-import { eq, and, isNull, sql, desc } from "drizzle-orm";
+import { db, gameRoomsTable, gameInvitesTable, usersTable } from "@workspace/db";
+import { eq, and, isNull, sql, desc, gt } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import crypto from "crypto";
+import { generateId, requireAuth, type AuthedRequest } from "../lib/auth";
 
 const router = Router();
 
@@ -15,8 +16,15 @@ const FIXED_MATCHUP = {
   winThreshold: 10,
 };
 
+const GAME_INVITE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const APP_SCHEME = "tug-of-war-mobile";
+
 function generateToken(): string {
   return crypto.randomBytes(16).toString("hex");
+}
+
+function buildGameInviteUrl(inviteId: string) {
+  return `${APP_SCHEME}://invite/game/${inviteId}`;
 }
 
 // ── POST /api/game/join ─────────────────────────────────────────────
@@ -54,7 +62,7 @@ router.post("/join", async (req, res) => {
       });
     }
 
-    // Look for active waiting rooms
+    // Look for active public waiting rooms (exclude private friend rooms)
     const waiting = await db
       .select()
       .from(gameRoomsTable)
@@ -62,6 +70,7 @@ router.post("/join", async (req, res) => {
         and(
           eq(gameRoomsTable.status, "waiting"),
           eq(gameRoomsTable.active, true),
+          eq(gameRoomsTable.isPrivate, false),
           isNull(gameRoomsTable.rightPlayerToken),
         ),
       );
@@ -335,6 +344,159 @@ router.post("/leave/:roomId", async (req, res) => {
     return res.json({ deleted: false, winner });
   } catch (err) {
     logger.error({ err }, "Game leave error");
+    return res.status(500).json({ message: "Sunucu hatası." });
+  }
+});
+
+// ── POST /api/game/create-invite — private 1v1 room for friends ─────────────
+router.post("/create-invite", requireAuth, async (req: AuthedRequest, res) => {
+  const playerName =
+    typeof req.body.name === "string" && req.body.name.trim()
+      ? req.body.name.trim().slice(0, 24)
+      : "Oyuncu";
+
+  try {
+    const userRows = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, req.userId!))
+      .limit(1);
+    if (userRows.length === 0) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+    }
+    const user = userRows[0];
+    const displayName = playerName || user.displayName;
+
+    const roomId = `r_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const inviteId = generateId();
+    const expiresAt = new Date(Date.now() + GAME_INVITE_TTL_MS);
+
+    await db.insert(gameRoomsTable).values({
+      id: roomId,
+      matchupId: "fixed",
+      leftPlayerName: displayName,
+      leftPlayerToken: user.playerToken,
+      status: "waiting",
+      isPrivate: true,
+      hostUserId: user.id,
+      offset: 0,
+      leftPulls: 0,
+      rightPulls: 0,
+      updatedAt: new Date(),
+    });
+
+    await db.insert(gameInvitesTable).values({
+      id: inviteId,
+      hostUserId: user.id,
+      roomId,
+      expiresAt,
+    });
+
+    const url = buildGameInviteUrl(inviteId);
+    logger.info({ roomId, inviteId, hostUserId: user.id }, "Private game invite created");
+
+    return res.json({
+      roomId,
+      inviteId,
+      url,
+      shareMessage: `${displayName} seni TugUp 1v1'e davet ediyor! ${url}`,
+      expiresAt: expiresAt.toISOString(),
+      side: "left",
+      matchup: FIXED_MATCHUP,
+      opponentName: null,
+      status: "waiting",
+      playerToken: user.playerToken,
+    });
+  } catch (err) {
+    logger.error({ err }, "Create game invite error");
+    return res.status(500).json({ message: "Sunucu hatası." });
+  }
+});
+
+// ── POST /api/game/join-invite/:inviteId — join private room via link ───────
+router.post("/join-invite/:inviteId", requireAuth, async (req: AuthedRequest, res) => {
+  const { inviteId } = req.params;
+  const playerName =
+    typeof req.body.name === "string" && req.body.name.trim()
+      ? req.body.name.trim().slice(0, 24)
+      : "Oyuncu";
+
+  try {
+    const inviteRows = await db
+      .select()
+      .from(gameInvitesTable)
+      .where(
+        and(
+          eq(gameInvitesTable.id, inviteId),
+          isNull(gameInvitesTable.usedBy),
+          gt(gameInvitesTable.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+
+    if (inviteRows.length === 0) {
+      return res.status(404).json({ message: "Geçersiz veya süresi dolmuş davet." });
+    }
+
+    const invite = inviteRows[0];
+    if (invite.hostUserId === req.userId) {
+      return res.status(400).json({ message: "Kendi davetine katılamazsın." });
+    }
+
+    const userRows = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, req.userId!))
+      .limit(1);
+    if (userRows.length === 0) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+    }
+    const user = userRows[0];
+    const displayName = playerName || user.displayName;
+
+    const roomRows = await db
+      .select()
+      .from(gameRoomsTable)
+      .where(eq(gameRoomsTable.id, invite.roomId))
+      .limit(1);
+
+    if (roomRows.length === 0 || roomRows[0].status !== "waiting" || roomRows[0].rightPlayerToken) {
+      return res.status(409).json({ message: "Oda dolu veya artık mevcut değil." });
+    }
+
+    const room = roomRows[0];
+
+    await db
+      .update(gameRoomsTable)
+      .set({
+        rightPlayerName: displayName,
+        rightPlayerToken: user.playerToken,
+        status: "countdown",
+        countdownStartedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(gameRoomsTable.id, room.id));
+
+    await db
+      .update(gameInvitesTable)
+      .set({ usedBy: user.id, usedAt: new Date() })
+      .where(eq(gameInvitesTable.id, inviteId));
+
+    logger.info(
+      { roomId: room.id, inviteId, hostUserId: invite.hostUserId, guestUserId: user.id },
+      "Private game invite accepted",
+    );
+
+    return res.json({
+      roomId: room.id,
+      side: "right",
+      matchup: FIXED_MATCHUP,
+      opponentName: room.leftPlayerName,
+      status: "countdown",
+      playerToken: user.playerToken,
+    });
+  } catch (err) {
+    logger.error({ err }, "Join game invite error");
     return res.status(500).json({ message: "Sunucu hatası." });
   }
 });
