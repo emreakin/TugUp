@@ -14,6 +14,10 @@
       },
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_ADMOB_REWARDED_UNIT_ID": "ca-app-pub-5692796466438151/4906976811",
+        "EXPO_PUBLIC_API_BASE": "https://tugup-api.onrender.com"
       }
     },
     "preview": {
@@ -26,7 +30,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ADMOB_REWARDED_UNIT_ID": "ca-app-pub-5692796466438151/4906976811",
-        "EXPO_PUBLIC_API_BASE": "https://72a67990-7136-40a7-a2ca-48f1c4842176-00-26avhjd9y0o9l.janeway.replit.dev"
+        "EXPO_PUBLIC_API_BASE": "https://tugup-api.onrender.com"
       }
     },
     "production": {
@@ -37,7 +41,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ADMOB_REWARDED_UNIT_ID": "ca-app-pub-5692796466438151/4906976811",
-        "EXPO_PUBLIC_API_BASE": "https://rope-tug--cobch.replit.app"
+        "EXPO_PUBLIC_API_BASE": "https://tugup-api.onrender.com"
       }
     }
   }

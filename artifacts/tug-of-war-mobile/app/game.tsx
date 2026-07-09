@@ -16,6 +16,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { getApiBase } from "@/lib/api";
+
 // AdMob is loaded dynamically on native only — see ad-helper.native.ts
 
 const DEFAULT_MAX_OFFSET = 100;
@@ -24,10 +26,6 @@ const CHAR_WIDTH = 100;
 const ROPE_PAD = 4;
 const WINDOW_WIDTH = Dimensions.get("window").width;
 
-const API_BASE =
-  Platform.OS === "web"
-    ? "/api"
-    : `${process.env.EXPO_PUBLIC_API_BASE ?? `https://${process.env.EXPO_PUBLIC_REPLIT_DEV_DOMAIN ?? "72a67990-7136-40a7-a2ca-48f1c4842176-00-26avhjd9y0o9l.janeway.replit.dev"}`}/api`;
 // How far the group must slide so the leading character's center crosses the red line
 const MAX_TRANSLATION = WINDOW_WIDTH / 2 - ROPE_PAD - CHAR_WIDTH / 2;
 
@@ -163,7 +161,7 @@ export default function GameScreen() {
 
   // Load daily ad reward limit on mount
   useEffect(() => {
-    fetch(`${API_BASE}/votes/${encodeURIComponent(matchupId)}/reward-limit`)
+    fetch(`${getApiBase()}/votes/${encodeURIComponent(matchupId)}/reward-limit`)
       .then((res) => {
         if (!res.ok) return;
         return res.json();
@@ -228,7 +226,7 @@ export default function GameScreen() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`${API_BASE}/votes/${encodeURIComponent(matchupId)}`);
+        const res = await fetch(`${getApiBase()}/votes/${encodeURIComponent(matchupId)}`);
         if (!res.ok) return;
         const data: { offset: number; leftPulls: number; rightPulls: number; winThreshold?: number } = await res.json();
         if (cancelled) return;
@@ -279,7 +277,7 @@ export default function GameScreen() {
       };
 
       const clearCooldownOnly = () => {
-        fetch(`${API_BASE}/votes/${encodeURIComponent(matchupId)}/reward`, {
+        fetch(`${getApiBase()}/votes/${encodeURIComponent(matchupId)}/reward`, {
           method: "POST",
         })
           .then((res) => {
@@ -336,7 +334,7 @@ export default function GameScreen() {
 
       try {
         const res = await fetch(
-          `${API_BASE}/votes/${encodeURIComponent(matchupId)}`,
+          `${getApiBase()}/votes/${encodeURIComponent(matchupId)}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

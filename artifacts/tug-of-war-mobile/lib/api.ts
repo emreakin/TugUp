@@ -1,14 +1,17 @@
 import { Platform } from "react-native";
 
+export const DEFAULT_API_BASE = "https://tugup-api.onrender.com";
+
+/** Host only, no trailing slash — e.g. https://tugup-api.onrender.com */
 export function getApiUrl(): string {
   if (Platform.OS === "web") return "";
-  return (
-    process.env.EXPO_PUBLIC_API_BASE ??
-    `https://${
-      process.env.EXPO_PUBLIC_REPLIT_DEV_DOMAIN ??
-      "72a67990-7136-40a7-a2ca-48f1c4842176-00-26avhjd9y0o9l.janeway.replit.dev"
-    }`
-  );
+  return process.env.EXPO_PUBLIC_API_BASE ?? DEFAULT_API_BASE;
+}
+
+/** API prefix — e.g. https://tugup-api.onrender.com/api (web: /api) */
+export function getApiBase(): string {
+  if (Platform.OS === "web") return "/api";
+  return `${getApiUrl()}/api`;
 }
 
 export interface PublicUser {

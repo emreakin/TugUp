@@ -17,11 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const API_BASE =
-  process.env.EXPO_PUBLIC_API_BASE ??
-  (process.env.EXPO_PUBLIC_REPLIT_DEV_DOMAIN
-    ? `https://${process.env.EXPO_PUBLIC_REPLIT_DEV_DOMAIN}`
-    : "https://72a67990-7136-40a7-a2ca-48f1c4842176-00-26avhjd9y0o9l.janeway.replit.dev");
+import { getApiBase } from "@/lib/api";
 
 interface Matchup {
   id: string;
@@ -87,7 +83,7 @@ export default function OnlineScreen() {
 
   const fetchMatchups = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/matchups`);
+      const res = await fetch(`${getApiBase()}/matchups`);
       if (res.ok) setMatchups(await res.json());
     } catch { /* ignore */ } finally {
       setMatchupsLoading(false);
@@ -96,7 +92,7 @@ export default function OnlineScreen() {
 
   const fetchSuggestions = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/suggestions`);
+      const res = await fetch(`${getApiBase()}/suggestions`);
       if (res.ok) setSuggestions(await res.json());
     } catch { /* ignore */ } finally {
       setSuggestionsLoading(false);
@@ -157,7 +153,7 @@ export default function OnlineScreen() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/api/suggestions`, {
+      const res = await fetch(`${getApiBase()}/suggestions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leftTeam: l, rightTeam: r }),
@@ -184,7 +180,7 @@ export default function OnlineScreen() {
     if (!s || s.hasVoted) return;
     setVotingId(id);
     try {
-      const res = await fetch(`${API_BASE}/api/suggestions/${id}/vote`, {
+      const res = await fetch(`${getApiBase()}/suggestions/${id}/vote`, {
         method: "POST",
       });
       if (res.ok) {
