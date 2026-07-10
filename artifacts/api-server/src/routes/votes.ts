@@ -13,6 +13,7 @@ import {
   dailyAdRewardsTable,
 } from "@workspace/db";
 import { GetVotesParams, CastVoteParams, CastVoteBody } from "@workspace/api-zod";
+import { reqT } from "../lib/i18n";
 
 const router: IRouter = Router();
 
@@ -344,7 +345,7 @@ async function maybeRunWeeklyProcessing() {
 router.get("/:matchupId", async (req, res) => {
   const parsed = GetVotesParams.safeParse(req.params);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid matchupId" });
+    res.status(400).json({ error: reqT(req, "invalidMatchupId") });
     return;
   }
   const { matchupId } = parsed.data;
@@ -361,7 +362,7 @@ router.post("/:matchupId", async (req, res) => {
   const bodyParsed = CastVoteBody.safeParse(req.body);
 
   if (!paramsParsed.success || !bodyParsed.success) {
-    res.status(400).json({ error: "Invalid request" });
+    res.status(400).json({ error: reqT(req, "invalidRequest") });
     return;
   }
 
@@ -501,7 +502,7 @@ router.get("/:matchupId/reward-limit", async (req, res) => {
 router.post("/:matchupId/reward", async (req, res) => {
   const paramsParsed = CastVoteParams.safeParse(req.params);
   if (!paramsParsed.success) {
-    res.status(400).json({ error: "Invalid request" });
+    res.status(400).json({ error: reqT(req, "invalidRequest") });
     return;
   }
   const { matchupId } = paramsParsed.data;
@@ -509,7 +510,7 @@ router.post("/:matchupId/reward", async (req, res) => {
   const used = await getDailyAdRewardCount(ipHash);
 
   if (used >= MAX_DAILY_AD_REWARDS) {
-    res.status(429).json({ error: "Daily ad reward limit reached", used, max: MAX_DAILY_AD_REWARDS });
+    res.status(429).json({ error: reqT(req, "dailyAdLimitReached"), used, max: MAX_DAILY_AD_REWARDS });
     return;
   }
 

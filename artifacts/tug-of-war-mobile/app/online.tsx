@@ -15,9 +15,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { getApiBase } from "@/lib/api";
+import { getApiBase, getApiHeaders } from "@/lib/api";
 
 interface Matchup {
   id: string;
@@ -41,31 +42,20 @@ interface Suggestion {
 
 const ONBOARDING_KEY = "@tugup_onboarding_online_done";
 
-const STEPS = [
-  {
-    title: "\ud83c\udf0d Online Oylama",
-    text:
-      "TugUp'un kalbi burada! Dünyanın en büyük mücadelelerini (Galatasaray vs Fenerbahçe, Android vs iOS...) seç ve desteklediğin taraf için halatı çekerek skora katkı sağla.",
-  },
-  {
-    title: "\ud83c\udfa9 Nasıl Oynanır?",
-    text:
-      "Bir mücadele seç, ekranda beliren halatı tarafın rengiyle eşleşen butona tıklayarak çek. Her oy verdiğinde halat o tarafa doğru kayar. Rakip tarafın da oy verdiğini unutma!",
-  },
-  {
-    title: "\u23f3 Bekleme Sistemi",
-    text:
-      "Her oy verişten sonra kısa bir bekleme süresi başlar. Video izleyerek (Ödüllü Reklam) bu süreyi atlayabilir ve tekrar oy verebilirsin.",
-  },
-  {
-    title: "\ud83d\uddd3 Haftalık Sıfırlama",
-    text:
-      "Her hafta Pazartesi başlangıcında tüm skorlar sıfırlanır. Hafta boyunca en çok oy alan taraf o haftanın galibi olur ve kümülatif bir galibiyet puanı kazanır.",
-  },
-];
+const ONBOARDING_STEP_KEYS = [
+  { title: "online.onboarding.step1Title", text: "online.onboarding.step1Text" },
+  { title: "online.onboarding.step2Title", text: "online.onboarding.step2Text" },
+  { title: "online.onboarding.step3Title", text: "online.onboarding.step3Text" },
+  { title: "online.onboarding.step4Title", text: "online.onboarding.step4Text" },
+] as const;
 
 export default function OnlineScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const steps = ONBOARDING_STEP_KEYS.map((step) => ({
+    title: t(step.title),
+    text: t(step.text),
+  }));
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -83,7 +73,9 @@ export default function OnlineScreen() {
 
   const fetchMatchups = useCallback(async () => {
     try {
-      const res = await fetch(`${getApiBase()}/matchups`);
+      const res = await fetch(`${getApiBase()}/matchups`, {
+        headers: getApiHeaders({}, { json: false }),
+      });
       if (res.ok) setMatchups(await res.json());
     } catch { /* ignore */ } finally {
       setMatchupsLoading(false);
@@ -92,7 +84,9 @@ export default function OnlineScreen() {
 
   const fetchSuggestions = useCallback(async () => {
     try {
-      const res = await fetch(`${getApiBase()}/suggestions`);
+      const res = await fetch(`${getApiBase()}/suggestions`, {
+        headers: getApiHeaders({}, { json: false }),
+      });
       if (res.ok) setSuggestions(await res.json());
     } catch { /* ignore */ } finally {
       setSuggestionsLoading(false);
@@ -114,7 +108,7 @@ export default function OnlineScreen() {
   }, []);
 
   const handleOnboardingNext = () => {
-    if (onboardingStep < STEPS.length - 1) {
+    if (onboardingStep < steps.length - 1) {
       setOnboardingStep(onboardingStep + 1);
     } else {
       setShowOnboarding(false);
@@ -148,14 +142,14 @@ export default function OnlineScreen() {
     const l = leftTeam.trim();
     const r = rightTeam.trim();
     if (!l || !r) {
-      Alert.alert("Eksik Bilgi", "Her iki tarafı da doldurmalısın.");
+      Alert.alert(t("online.alerts.missingInfoTitle"), t("online.alerts.missingInfoMessage"));
       return;
     }
     setSubmitting(true);
     try {
       const res = await fetch(`${getApiBase()}/suggestions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getApiHeaders(),
         body: JSON.stringify({ leftTeam: l, rightTeam: r }),
       });
       if (res.ok) {
@@ -166,10 +160,10 @@ export default function OnlineScreen() {
         setLeftTeam("");
         setRightTeam("");
       } else {
-        Alert.alert("Hata", "Öneri gönderilemedi.");
+        Alert.alert(t("common.error"), t("online.alerts.submitFailed"));
       }
     } catch {
-      Alert.alert("Hata", "Bağlantı sorunu.");
+      Alert.alert(t("common.error"), t("online.alerts.connectionError"));
     } finally {
       setSubmitting(false);
     }
@@ -182,6 +176,7 @@ export default function OnlineScreen() {
     try {
       const res = await fetch(`${getApiBase()}/suggestions/${id}/vote`, {
         method: "POST",
+        headers: getApiHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -200,7 +195,7 @@ export default function OnlineScreen() {
         }
       }
     } catch {
-      Alert.alert("Hata", "Bağlantı sorunu.");
+      Alert.alert(t("common.error"), t("online.alerts.connectionError"));
     } finally {
       setVotingId(null);
     }
@@ -225,16 +220,16 @@ export default function OnlineScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>← Ana Menü</Text>
+            <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>Online</Text>
+          <Text style={styles.headerTitle}>{t("home.modes.online")}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         {/* Title */}
         <View style={styles.titleSection}>
-          <Text style={styles.title}>TUG OF WAR</Text>
-          <Text style={styles.subtitle}>Mücadele Seç</Text>
+          <Text style={styles.title}>{t("online.title")}</Text>
+          <Text style={styles.subtitle}>{t("online.subtitle")}</Text>
         </View>
 
         {/* Matchup list */}
@@ -263,7 +258,7 @@ export default function OnlineScreen() {
                         <Text style={[styles.teamName, { color: m.leftColor, textAlign: "center" }]}>
                           {leftLeads ? "👑 " : ""}{m.leftTeam}
                         </Text>
-                        <Text style={styles.vsText}>vs</Text>
+                        <Text style={styles.vsText}>{t("common.vs")}</Text>
                         <Text style={[styles.teamName, { color: m.rightColor, textAlign: "center" }]}>
                           {m.rightTeam}{rightLeads ? " 👑" : ""}
                         </Text>
@@ -277,7 +272,7 @@ export default function OnlineScreen() {
               {inactive.length > 0 && (
                 <>
                   <View style={styles.divider} />
-                  <Text style={styles.sectionTitle}>BEKLEMEDEKİLER</Text>
+                  <Text style={styles.sectionTitle}>{t("online.pending")}</Text>
                   <View style={styles.list}>
                     {inactive.map((m) => (
                       <View key={m.id} style={[styles.card, styles.cardInactive]}>
@@ -286,7 +281,7 @@ export default function OnlineScreen() {
                           <Text style={[styles.teamName, { color: m.leftColor, textAlign: "center" }, styles.teamNameInactive]}>
                             {m.leftTeam}
                           </Text>
-                          <Text style={styles.vsText}>vs</Text>
+                          <Text style={styles.vsText}>{t("common.vs")}</Text>
                           <Text style={[styles.teamName, { color: m.rightColor, textAlign: "center" }, styles.teamNameInactive]}>
                             {m.rightTeam}
                           </Text>
@@ -305,7 +300,7 @@ export default function OnlineScreen() {
         {false && (
           <>
             <View style={styles.divider} />
-            <Text style={styles.sectionTitle}>MÜCADELE ÖNER</Text>
+            <Text style={styles.sectionTitle}>{t("online.suggestSection")}</Text>
             <View style={styles.suggestForm}>
               <TextInput
                 style={styles.input}
@@ -314,7 +309,7 @@ export default function OnlineScreen() {
                 onChangeText={setLeftTeam}
                 maxLength={50}
               />
-              <Text style={styles.formVs}>vs</Text>
+              <Text style={styles.formVs}>{t("common.vs")}</Text>
               <TextInput
                 style={styles.input}
                 placeholderTextColor="#475569"
@@ -333,7 +328,7 @@ export default function OnlineScreen() {
                 {submitting ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.submitBtnText}>TALEP ET</Text>
+                  <Text style={styles.submitBtnText}>{t("online.submit")}</Text>
                 )}
               </Pressable>
             </View>
@@ -341,14 +336,14 @@ export default function OnlineScreen() {
             {suggestionsLoading ? (
               <ActivityIndicator color="#ef4444" style={{ marginTop: 24 }} />
             ) : suggestions.length === 0 ? (
-              <Text style={styles.emptyText}>Henüz öneri yok. İlk sen öner!</Text>
+              <Text style={styles.emptyText}>{t("online.emptySuggestions")}</Text>
             ) : (
               <View style={[styles.list, { marginTop: 16 }]}>
                 {suggestions.map((s) => (
                   <View key={s.id} style={styles.suggestionCard}>
                     <View style={styles.suggestionMiddle}>
                       <Text style={styles.suggestionTeam}>{s.leftTeam}</Text>
-                      <Text style={styles.vsText}>vs</Text>
+                      <Text style={styles.vsText}>{t("common.vs")}</Text>
                       <Text style={styles.suggestionTeam}>{s.rightTeam}</Text>
                     </View>
                     <Pressable
@@ -385,13 +380,13 @@ export default function OnlineScreen() {
         <View style={styles.onboardingOverlay}>
           <View style={styles.onboardingCard}>
             <Text style={styles.onboardingStepCount}>
-              {onboardingStep + 1} / {STEPS.length}
+              {onboardingStep + 1} / {steps.length}
             </Text>
-            <Text style={styles.onboardingTitle}>{STEPS[onboardingStep].title}</Text>
-            <Text style={styles.onboardingText}>{STEPS[onboardingStep].text}</Text>
+            <Text style={styles.onboardingTitle}>{steps[onboardingStep].title}</Text>
+            <Text style={styles.onboardingText}>{steps[onboardingStep].text}</Text>
 
             <View style={styles.onboardingDots}>
-              {STEPS.map((_, i) => (
+              {steps.map((_, i) => (
                 <View
                   key={i}
                   style={[
@@ -403,19 +398,19 @@ export default function OnlineScreen() {
             </View>
 
             <View style={styles.onboardingButtons}>
-              {onboardingStep < STEPS.length - 1 ? (
+              {onboardingStep < steps.length - 1 ? (
                 <>
                   <Pressable
                     style={styles.onboardingBtnSecondary}
                     onPress={handleOnboardingSkip}
                   >
-                    <Text style={styles.onboardingBtnSecondaryText}>Atla</Text>
+                    <Text style={styles.onboardingBtnSecondaryText}>{t("common.onboarding.skip")}</Text>
                   </Pressable>
                   <Pressable
                     style={styles.onboardingBtnPrimary}
                     onPress={handleOnboardingNext}
                   >
-                    <Text style={styles.onboardingBtnPrimaryText}>İleri</Text>
+                    <Text style={styles.onboardingBtnPrimaryText}>{t("common.onboarding.next")}</Text>
                   </Pressable>
                 </>
               ) : (
@@ -423,7 +418,7 @@ export default function OnlineScreen() {
                   style={styles.onboardingBtnPrimary}
                   onPress={handleOnboardingNext}
                 >
-                  <Text style={styles.onboardingBtnPrimaryText}>Başla!</Text>
+                  <Text style={styles.onboardingBtnPrimaryText}>{t("common.onboarding.start")}</Text>
                 </Pressable>
               )}
             </View>

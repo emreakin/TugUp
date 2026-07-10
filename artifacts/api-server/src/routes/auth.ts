@@ -12,6 +12,7 @@ import {
   type AuthedRequest,
 } from "../lib/auth";
 import { logger } from "../lib/logger";
+import { defaultPlayerName, reqT } from "../lib/i18n";
 
 const router = Router();
 
@@ -58,7 +59,7 @@ router.post("/guest", async (req, res) => {
   const displayName =
     typeof req.body.displayName === "string" && req.body.displayName.trim()
       ? req.body.displayName.trim().slice(0, 24)
-      : "Oyuncu";
+      : defaultPlayerName(req);
 
   const resumeToken =
     typeof req.body.resumeToken === "string" ? req.body.resumeToken : null;
@@ -83,7 +84,7 @@ router.post("/guest", async (req, res) => {
     return res.json(issueSession(user));
   } catch (err) {
     logger.error({ err }, "Guest auth error");
-    return res.status(500).json({ error: "Sunucu hatası." });
+    return res.status(500).json({ error: reqT(req, "serverError") });
   }
 });
 
@@ -95,7 +96,7 @@ router.get("/me", requireAuth, async (req: AuthedRequest, res) => {
     .where(eq(usersTable.id, req.userId!))
     .limit(1);
   if (rows.length === 0) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+    return res.status(404).json({ error: reqT(req, "userNotFound") });
   }
   const user = rows[0];
   return res.json({
@@ -111,7 +112,7 @@ router.patch("/me", requireAuth, async (req: AuthedRequest, res) => {
       ? req.body.displayName.trim().slice(0, 24)
       : null;
   if (!displayName) {
-    return res.status(400).json({ error: "Geçersiz isim." });
+    return res.status(400).json({ error: reqT(req, "invalidName") });
   }
 
   const [updated] = await db
@@ -121,7 +122,7 @@ router.patch("/me", requireAuth, async (req: AuthedRequest, res) => {
     .returning();
 
   if (!updated) {
-    return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+    return res.status(404).json({ error: reqT(req, "userNotFound") });
   }
 
   return res.json({

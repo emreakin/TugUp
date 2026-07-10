@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
@@ -17,21 +18,21 @@ const { width } = Dimensions.get("window");
 const MODE_CONFIG = [
   {
     key: "quick" as const,
-    label: "Quick Game",
+    labelKey: "home.modes.quickGame" as const,
     emoji: "⚡",
     color: "#ef4444",
     gradient: ["#ef4444", "#dc2626"],
   },
   {
     key: "1v1" as const,
-    label: "1v1",
+    labelKey: "home.modes.oneVsOne" as const,
     emoji: "👥",
     color: "#3b82f6",
     gradient: ["#3b82f6", "#2563eb"],
   },
   {
     key: "online" as const,
-    label: "Online",
+    labelKey: "home.modes.online" as const,
     emoji: "🌐",
     color: "#10b981",
     gradient: ["#10b981", "#059669"],
@@ -40,6 +41,7 @@ const MODE_CONFIG = [
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const handlePress = (key: (typeof MODE_CONFIG)[number]["key"]) => {
     if (key === "online") {
@@ -71,7 +73,7 @@ export default function HomeScreen() {
           resizeMode="contain"
         />
         <Text style={styles.brand}>TugUp</Text>
-        <Text style={styles.tagline}>Dünyanın en büyük gücünü belirle!</Text>
+        <Text style={styles.tagline}>{t("home.tagline")}</Text>
       </View>
 
       {/* Mode buttons */}
@@ -87,7 +89,7 @@ export default function HomeScreen() {
             onPress={() => handlePress(mode.key)}
           >
             <Text style={styles.modeEmoji}>{mode.emoji}</Text>
-            <Text style={styles.modeLabel}>{mode.label}</Text>
+            <Text style={styles.modeLabel}>{t(mode.labelKey)}</Text>
             <Text style={styles.modeArrow}>›</Text>
           </Pressable>
         ))}
@@ -95,9 +97,14 @@ export default function HomeScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Pressable style={styles.friendsBtn} onPress={() => router.push("/friends")}>
-          <Text style={styles.friendsBtnText}>👥 Arkadaşlar</Text>
-        </Pressable>
+        <View style={styles.footerActions}>
+          <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
+            <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
+          </Pressable>
+          <Pressable style={styles.footerBtn} onPress={() => router.push("/settings")}>
+            <Text style={styles.footerBtnText}>⚙️ {t("home.settings")}</Text>
+          </Pressable>
+        </View>
         <Text style={styles.footerText}>v0.1.0 · TugUp</Text>
       </View>
     </View>
@@ -180,15 +187,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  friendsBtn: {
+  footerActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  footerBtn: {
     backgroundColor: "#1e293b",
     borderRadius: 14,
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     borderWidth: 1,
     borderColor: "#334155",
   },
-  friendsBtnText: {
+  footerBtnText: {
     color: "#94a3b8",
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,

@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import type { Request, Response, NextFunction } from "express";
+import { reqT } from "./i18n";
 
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -64,12 +65,12 @@ export interface AuthedRequest extends Request {
 export function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ error: reqT(req, "authRequired") });
     return;
   }
   const payload = verifyAuthToken(header.slice(7));
   if (!payload) {
-    res.status(401).json({ error: "Invalid or expired token" });
+    res.status(401).json({ error: reqT(req, "invalidToken") });
     return;
   }
   req.userId = payload.userId;

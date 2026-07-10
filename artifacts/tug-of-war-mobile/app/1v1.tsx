@@ -17,10 +17,11 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch, getApiUrl } from "@/lib/api";
+import { apiFetch, getApiHeaders, getApiUrl } from "@/lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────
 
@@ -47,15 +48,21 @@ interface MatchupInfo {
   winThreshold: number;
 }
 
-const FIXED_MATCHUP_LOCAL: MatchupInfo = {
+const FIXED_MATCHUP_BASE = {
   id: "fixed",
-  leftTeam: "Takım A",
-  rightTeam: "Takım B",
   leftColor: "#ef4444",
   rightColor: "#3b82f6",
   emoji: "⚔️",
   winThreshold: 10,
-};
+} as const;
+
+function createFixedMatchup(t: (key: string) => string): MatchupInfo {
+  return {
+    ...FIXED_MATCHUP_BASE,
+    leftTeam: t("oneVsOne.teamA"),
+    rightTeam: t("oneVsOne.teamB"),
+  };
+}
 
 // ─── Character Component ──────────────────────────────────────────
 
@@ -86,33 +93,22 @@ function Character({
 
 const ONBOARDING_1V1_KEY = "@tugup_onboarding_1v1_done";
 
-const STEPS_1V1 = [
-  {
-    title: "\ud83c\udfa1 1v1 Ger\u00e7ek Zamanl\u0131 Oyna",
-    text:
-      "Ba\u015fka bir oyuncuyla e\u015fle\u015f ve kar\u015f\u0131l\u0131kl\u0131 halat \u00e7ek! \u0130ki karakter, bir halat ve tek ama\u00e7: rakibini kendi taraf\u0131na \u00e7ekmek.",
-  },
-  {
-    title: "\ud83e\udde9 Oynamak \u00c7ok Basit",
-    text:
-      "Ekran\u0131n alt\u0131ndaki butona h\u0131zl\u0131ca t\u0131kla. Her t\u0131klamanda halat senin taraf\u0131na do\u011fru kayar. Ama dikkat: rakibin de ayn\u0131 \u015feyi yap\u0131yor!",
-  },
-  {
-    title: "\ud83c\udfaf Kazanmak i\u00e7in",
-    text:
-      "Halat\u0131 merkez \u00e7izgiden kar\u015f\u0131 taraf\u0131n sonuna kadar \u00e7ekmek zorundas\u0131n. \u0130lerleme \u00e7ubu\u011funu takip et — rakibini yener misin?",
-  },
-  {
-    title: "\u2705 E\u015fle\u015fme Bekleme",
-    text:
-      "Ad\u0131n\u0131 yazd\u0131ktan sonra oyun seni otomatik olarak bir rakiple e\u015fle\u015ftiriyor. Rakibin gelene kadar bu ekranda bekle. Haz\u0131rsan ba\u015fla!",
-  },
-];
+const ONBOARDING_1V1_STEP_KEYS = [
+  { title: "oneVsOne.onboarding.step1Title", text: "oneVsOne.onboarding.step1Text" },
+  { title: "oneVsOne.onboarding.step2Title", text: "oneVsOne.onboarding.step2Text" },
+  { title: "oneVsOne.onboarding.step3Title", text: "oneVsOne.onboarding.step3Text" },
+  { title: "oneVsOne.onboarding.step4Title", text: "oneVsOne.onboarding.step4Text" },
+] as const;
 
 // ─── Main Screen ─────────────────────────────────────────────────────
 
 export default function OneVsOneScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const onboardingSteps = ONBOARDING_1V1_STEP_KEYS.map((step) => ({
+    title: t(step.title),
+    text: t(step.text),
+  }));
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
   const { token, ensureSession, playerToken: authPlayerToken } = useAuth();
@@ -149,7 +145,7 @@ export default function OneVsOneScreen() {
   }, []);
 
   const handleOnboardingNext = () => {
-    if (onboardingStep < STEPS_1V1.length - 1) {
+    if (onboardingStep < onboardingSteps.length - 1) {
       setOnboardingStep(onboardingStep + 1);
     } else {
       setShowOnboarding(false);
@@ -248,7 +244,9 @@ export default function OneVsOneScreen() {
     if (!roomId || !token) return;
 
     try {
-      const res = await fetch(`${getApiUrl()}/api/game/state/${roomId}?playerToken=${token}`);
+      const res = await fetch(`${getApiUrl()}/api/game/state/${roomId}?playerToken=${token}`, {
+        headers: getApiHeaders({}, { json: false }),
+      });
       if (res.status === 404) {
         // Room deleted (no opponent was present) — quietly go back
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -322,7 +320,7 @@ export default function OneVsOneScreen() {
 
     const side = params.joinSide === "left" ? "left" : "right";
     setMySide(side);
-    setMatchup(FIXED_MATCHUP_LOCAL);
+    setMatchup(createFixedMatchup(t));
     if (params.joinOpponent) setOpponentName(params.joinOpponent);
 
     const status = params.joinStatus ?? "waiting";
@@ -337,7 +335,7 @@ export default function OneVsOneScreen() {
 
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     pollIntervalRef.current = setInterval(() => { pollStateRef.current(); }, 500);
-  }, [params.joinRoomId, params.joinPlayerToken, params.joinSide, params.joinStatus, params.joinOpponent]);
+  }, [params.joinRoomId, params.joinPlayerToken, params.joinSide, params.joinStatus, params.joinOpponent, t]);
 
   // ── Connect / Join ──────────────────────────────────────────────
   const connect = useCallback(async () => {
@@ -352,7 +350,7 @@ export default function OneVsOneScreen() {
     resetAnimations();
 
     try {
-      const session = await ensureSession(playerName || "Oyuncu");
+      const session = await ensureSession(playerName || t("common.player"));
       const tokenToUse = session.playerToken ?? authPlayerToken;
       let token = tokenToUse ?? (await AsyncStorage.getItem("player_token"));
 
@@ -367,7 +365,7 @@ export default function OneVsOneScreen() {
         }>("/api/game/create-invite", {
           method: "POST",
           token: session.token,
-          body: JSON.stringify({ name: playerName || "Oyuncu" }),
+          body: JSON.stringify({ name: playerName || t("common.player") }),
         });
 
         roomIdRef.current = data.roomId;
@@ -376,19 +374,19 @@ export default function OneVsOneScreen() {
         setGameInviteShare(data.shareMessage);
 
         setMySide(data.side);
-        setMatchup(FIXED_MATCHUP_LOCAL);
+        setMatchup(createFixedMatchup(t));
         if (data.opponentName) setOpponentName(data.opponentName);
         setPhase("waiting");
       } else {
         const res = await fetch(`${getApiUrl()}/api/game/join`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: playerName || "Oyuncu", playerToken: token }),
+          headers: getApiHeaders(),
+          body: JSON.stringify({ name: playerName || t("common.player"), playerToken: token }),
         });
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          setErrorMsg(err.message ?? "Sunucu hatası.");
+          setErrorMsg(err.message ?? t("oneVsOne.serverError"));
           setPhase("name_input");
           return;
         }
@@ -417,10 +415,10 @@ export default function OneVsOneScreen() {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = setInterval(() => { pollStateRef.current(); }, 500);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Sunucuya bağlanılamadı.");
+      setErrorMsg(err instanceof Error ? err.message : t("oneVsOne.connectionFailed"));
       setPhase("name_input");
     }
-  }, [playerName, resetAnimations, matchMode, ensureSession, authPlayerToken]);
+  }, [playerName, resetAnimations, matchMode, ensureSession, authPlayerToken, t]);
 
   // ── Play again — clear token so server creates a brand-new room ───
   const playAgain = useCallback(async () => {
@@ -445,7 +443,7 @@ export default function OneVsOneScreen() {
         if (roomId && token) {
           fetch(`${getApiUrl()}/api/game/leave/${roomId}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getApiHeaders(),
             body: JSON.stringify({ playerToken: token }),
           }).catch(() => {});
         }
@@ -461,7 +459,7 @@ export default function OneVsOneScreen() {
       if (roomId && token) {
         fetch(`${getApiUrl()}/api/game/leave/${roomId}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getApiHeaders(),
           body: JSON.stringify({ playerToken: token }),
         }).catch(() => {});
       }
@@ -480,7 +478,7 @@ export default function OneVsOneScreen() {
     try {
       await fetch(`${getApiUrl()}/api/game/pull/${roomId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getApiHeaders(),
         body: JSON.stringify({ playerToken: token, side: mySide }),
       });
       // Immediate poll after pull
@@ -527,15 +525,15 @@ export default function OneVsOneScreen() {
         <StatusBar barStyle="light-content" />
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>← Ana Menü</Text>
+            <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>1v1</Text>
+          <Text style={styles.headerTitle}>{t("oneVsOne.title")}</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.nameInputContent}>
           <Text style={styles.nameInputEmoji}>👥</Text>
-          <Text style={styles.nameInputTitle}>Nasıl Oynamak İstersin?</Text>
-          <Text style={styles.nameInputSubtitle}>Rastgele rakip bul veya arkadaşını davet et</Text>
+          <Text style={styles.nameInputTitle}>{t("oneVsOne.modeSelectTitle")}</Text>
+          <Text style={styles.nameInputSubtitle}>{t("oneVsOne.modeSelectSubtitle")}</Text>
 
           <Pressable
             style={({ pressed }) => [styles.modeCard, pressed && styles.modeCardPressed]}
@@ -543,8 +541,8 @@ export default function OneVsOneScreen() {
           >
             <Text style={styles.modeCardEmoji}>🎲</Text>
             <View style={styles.modeCardText}>
-              <Text style={styles.modeCardTitle}>Rastgele Eşleş</Text>
-              <Text style={styles.modeCardDesc}>Online bir rakiple anında eşleş</Text>
+              <Text style={styles.modeCardTitle}>{t("oneVsOne.randomMatchTitle")}</Text>
+              <Text style={styles.modeCardDesc}>{t("oneVsOne.randomMatchDesc")}</Text>
             </View>
           </Pressable>
 
@@ -554,8 +552,8 @@ export default function OneVsOneScreen() {
           >
             <Text style={styles.modeCardEmoji}>🔗</Text>
             <View style={styles.modeCardText}>
-              <Text style={styles.modeCardTitle}>Arkadaşını Davet Et</Text>
-              <Text style={styles.modeCardDesc}>Link paylaş, arkadaşın katılsın</Text>
+              <Text style={styles.modeCardTitle}>{t("oneVsOne.inviteFriendTitle")}</Text>
+              <Text style={styles.modeCardDesc}>{t("oneVsOne.inviteFriendDesc")}</Text>
             </View>
           </Pressable>
         </View>
@@ -570,22 +568,22 @@ export default function OneVsOneScreen() {
         <StatusBar barStyle="light-content" />
         <View style={styles.header}>
           <Pressable onPress={() => setPhase("mode_select")} style={styles.backBtn}>
-            <Text style={styles.backText}>← Geri</Text>
+            <Text style={styles.backText}>← {t("common.back")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>1v1</Text>
+          <Text style={styles.headerTitle}>{t("oneVsOne.title")}</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.nameInputContent}>
           <Text style={styles.nameInputEmoji}>🎮</Text>
-          <Text style={styles.nameInputTitle}>1v1</Text>
+          <Text style={styles.nameInputTitle}>{t("oneVsOne.title")}</Text>
           <Text style={styles.nameInputSubtitle}>
             {matchMode === "invite"
-              ? "Davet linkini paylaşmak için adını gir"
-              : "Mücadeleye katılmadan önce adını gir"}
+              ? t("oneVsOne.nameSubtitleInvite")
+              : t("oneVsOne.nameSubtitleRandom")}
           </Text>
           <TextInput
             style={styles.nameInputField}
-            placeholder="Kullanıcı Adı"
+            placeholder={t("common.usernamePlaceholder")}
             placeholderTextColor="#475569"
             value={playerName}
             onChangeText={setPlayerName}
@@ -602,7 +600,7 @@ export default function OneVsOneScreen() {
             disabled={!playerName.trim()}
           >
             <Text style={styles.nameInputBtnText}>
-              {matchMode === "invite" ? "Davet Oluştur 🔗" : "Başla 💪"}
+              {matchMode === "invite" ? t("oneVsOne.createInvite") : t("oneVsOne.start")}
             </Text>
           </Pressable>
         </View>
@@ -612,13 +610,13 @@ export default function OneVsOneScreen() {
           <View style={styles.onboardingOverlay}>
             <View style={styles.onboardingCard}>
               <Text style={styles.onboardingStepCount}>
-                {onboardingStep + 1} / {STEPS_1V1.length}
+                {onboardingStep + 1} / {onboardingSteps.length}
               </Text>
-              <Text style={styles.onboardingTitle}>{STEPS_1V1[onboardingStep].title}</Text>
-              <Text style={styles.onboardingText}>{STEPS_1V1[onboardingStep].text}</Text>
+              <Text style={styles.onboardingTitle}>{onboardingSteps[onboardingStep].title}</Text>
+              <Text style={styles.onboardingText}>{onboardingSteps[onboardingStep].text}</Text>
 
               <View style={styles.onboardingDots}>
-                {STEPS_1V1.map((_, i) => (
+                {onboardingSteps.map((_, i) => (
                   <View
                     key={i}
                     style={[
@@ -630,19 +628,19 @@ export default function OneVsOneScreen() {
               </View>
 
               <View style={styles.onboardingButtons}>
-                {onboardingStep < STEPS_1V1.length - 1 ? (
+                {onboardingStep < onboardingSteps.length - 1 ? (
                   <>
                     <Pressable
                       style={styles.onboardingBtnSecondary}
                       onPress={handleOnboardingSkip}
                     >
-                      <Text style={styles.onboardingBtnSecondaryText}>Atla</Text>
+                      <Text style={styles.onboardingBtnSecondaryText}>{t("common.onboarding.skip")}</Text>
                     </Pressable>
                     <Pressable
                       style={styles.onboardingBtnPrimary}
                       onPress={handleOnboardingNext}
                     >
-                      <Text style={styles.onboardingBtnPrimaryText}>İleri</Text>
+                      <Text style={styles.onboardingBtnPrimaryText}>{t("common.onboarding.next")}</Text>
                     </Pressable>
                   </>
                 ) : (
@@ -650,7 +648,7 @@ export default function OneVsOneScreen() {
                     style={styles.onboardingBtnPrimary}
                     onPress={handleOnboardingNext}
                   >
-                    <Text style={styles.onboardingBtnPrimaryText}>Başla!</Text>
+                    <Text style={styles.onboardingBtnPrimaryText}>{t("common.onboarding.start")}</Text>
                   </Pressable>
                 )}
               </View>
@@ -667,10 +665,10 @@ export default function OneVsOneScreen() {
       <View style={[styles.container, styles.centered, { paddingTop: topInset }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.header}>
-          <Pressable onPress={() => { const rid = roomIdRef.current; const tok = playerTokenRef.current; if (rid && tok) { fetch(`${getApiUrl()}/api/game/leave/${rid}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerToken: tok }) }).catch(() => {}); } router.back(); }} style={styles.backBtn}>
-            <Text style={styles.backText}>← Ana Menü</Text>
+          <Pressable onPress={() => { const rid = roomIdRef.current; const tok = playerTokenRef.current; if (rid && tok) { fetch(`${getApiUrl()}/api/game/leave/${rid}`, { method: "POST", headers: getApiHeaders(), body: JSON.stringify({ playerToken: tok }) }).catch(() => {}); } router.back(); }} style={styles.backBtn}>
+            <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>1v1</Text>
+          <Text style={styles.headerTitle}>{t("oneVsOne.title")}</Text>
           <View style={styles.headerSpacer} />
         </View>
         {errorMsg ? (
@@ -678,13 +676,13 @@ export default function OneVsOneScreen() {
             <Text style={styles.errorEmoji}>⚠️</Text>
             <Text style={styles.errorText}>{errorMsg}</Text>
             <Pressable style={styles.retryBtn} onPress={connect}>
-              <Text style={styles.retryBtnText}>Tekrar Dene</Text>
+              <Text style={styles.retryBtnText}>{t("oneVsOne.retry")}</Text>
             </Pressable>
           </>
         ) : (
           <>
             <ActivityIndicator color="#ef4444" size="large" />
-            <Text style={styles.connectingText}>Sunucuya bağlanıyor…</Text>
+            <Text style={styles.connectingText}>{t("oneVsOne.connecting")}</Text>
           </>
         )}
       </View>
@@ -699,10 +697,10 @@ export default function OneVsOneScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); const rid = roomIdRef.current; const tok = playerTokenRef.current; if (rid && tok) { fetch(`${getApiUrl()}/api/game/leave/${rid}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerToken: tok }) }).catch(() => {}); } router.back(); }} style={styles.backBtn}>
-            <Text style={styles.backText}>← Ana Menü</Text>
+          <Pressable onPress={() => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); const rid = roomIdRef.current; const tok = playerTokenRef.current; if (rid && tok) { fetch(`${getApiUrl()}/api/game/leave/${rid}`, { method: "POST", headers: getApiHeaders(), body: JSON.stringify({ playerToken: tok }) }).catch(() => {}); } router.back(); }} style={styles.backBtn}>
+            <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>1v1</Text>
+          <Text style={styles.headerTitle}>{t("oneVsOne.title")}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -711,7 +709,7 @@ export default function OneVsOneScreen() {
           <View style={styles.matchupBadge}>
             <Text style={styles.matchupEmoji}>{matchup.emoji}</Text>
             <Text style={[styles.matchupTeam, { color: leftColor }]}>{matchup.leftTeam}</Text>
-            <Text style={styles.matchupVs}>vs</Text>
+            <Text style={styles.matchupVs}>{t("common.vs")}</Text>
             <Text style={[styles.matchupTeam, { color: rightColor }]}>{matchup.rightTeam}</Text>
           </View>
         )}
@@ -722,8 +720,8 @@ export default function OneVsOneScreen() {
           <View style={styles.waitingSlot}>
             <View style={[styles.avatarGlow, { backgroundColor: myColor + "33", shadowColor: myColor }]} />
             <Image source={CHARACTER_IMG} style={[styles.waitingAvatar, mySide === "right" && { transform: [{ scaleX: -1 }] }]} resizeMode="contain" />
-            <Text style={[styles.waitingSlotLabel, { color: myColor }]}>{playerName || "Sen"}</Text>
-            <Text style={[styles.waitingReady, { color: myColor }]}>✓ Hazır</Text>
+            <Text style={[styles.waitingSlotLabel, { color: myColor }]}>{playerName || t("common.you")}</Text>
+            <Text style={[styles.waitingReady, { color: myColor }]}>{t("common.ready")}</Text>
           </View>
 
           {/* VS divider */}
@@ -743,18 +741,18 @@ export default function OneVsOneScreen() {
                 <View style={styles.waitingAvatarPlaceholder}>
                   <Text style={styles.waitingAvatarQuestion}>?</Text>
                 </View>
-                <Text style={[styles.waitingSlotLabel, { color: opponentColor }]}>{opponentName ?? "Rakip"}</Text>
+                <Text style={[styles.waitingSlotLabel, { color: opponentColor }]}>{opponentName ?? t("common.opponent")}</Text>
                 <View style={styles.waitingOpponentRow}>
                   <ActivityIndicator color="#475569" size="small" />
-                  <Text style={styles.waitingForText}>Rakip Bekleniyor</Text>
+                  <Text style={styles.waitingForText}>{t("oneVsOne.waitingForOpponent")}</Text>
                 </View>
               </>
             ) : (
               <>
                 <View style={[styles.avatarGlow, { backgroundColor: opponentColor + "33", shadowColor: opponentColor }]} />
                 <Image source={CHARACTER_IMG} style={[styles.waitingAvatar, mySide === "left" && { transform: [{ scaleX: -1 }] }]} resizeMode="contain" />
-                <Text style={[styles.waitingSlotLabel, { color: opponentColor }]}>{opponentName ?? "Rakip"}</Text>
-                <Text style={[styles.waitingReady, { color: opponentColor }]}>✓ Hazır</Text>
+                <Text style={[styles.waitingSlotLabel, { color: opponentColor }]}>{opponentName ?? t("common.opponent")}</Text>
+                <Text style={[styles.waitingReady, { color: opponentColor }]}>{t("common.ready")}</Text>
               </>
             )}
           </View>
@@ -764,7 +762,7 @@ export default function OneVsOneScreen() {
         {phase === "countdown" && (
           <View style={styles.countdownContainer}>
             <Text style={styles.countdownNumber}>{countdownNum}</Text>
-            <Text style={styles.countdownLabel}>BAŞLIYOR</Text>
+            <Text style={styles.countdownLabel}>{t("oneVsOne.starting")}</Text>
           </View>
         )}
 
@@ -775,13 +773,13 @@ export default function OneVsOneScreen() {
                 style={styles.shareInviteBtn}
                 onPress={() => Share.share({ message: gameInviteShare })}
               >
-                <Text style={styles.shareInviteBtnText}>Davet Linkini Paylaş</Text>
+                <Text style={styles.shareInviteBtnText}>{t("oneVsOne.shareInviteLink")}</Text>
               </Pressable>
             ) : null}
             <Text style={styles.waitingFooterText}>
               {gameInviteShare
-                ? "Arkadaşın linki açınca oyun başlayacak. Bu ekranda kal!"
-                : "Eşleşme aranıyor… Bu ekranda kal!"}
+                ? t("oneVsOne.waitingInviteFooter")
+                : t("oneVsOne.waitingMatchFooter")}
             </Text>
           </View>
         )}
@@ -796,8 +794,8 @@ export default function OneVsOneScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); const rid = roomIdRef.current; const tok = playerTokenRef.current; if (rid && tok) { fetch(`${getApiUrl()}/api/game/leave/${rid}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerToken: tok }) }).catch(() => {}); } router.back(); }} style={styles.backBtn}>
-          <Text style={styles.backText}>← Ana Menü</Text>
+        <Pressable onPress={() => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); const rid = roomIdRef.current; const tok = playerTokenRef.current; if (rid && tok) { fetch(`${getApiUrl()}/api/game/leave/${rid}`, { method: "POST", headers: getApiHeaders(), body: JSON.stringify({ playerToken: tok }) }).catch(() => {}); } router.back(); }} style={styles.backBtn}>
+          <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
         </Pressable>
         <Text style={styles.headerTitle}>1v1</Text>
         <View style={styles.headerSpacer} />
@@ -806,11 +804,11 @@ export default function OneVsOneScreen() {
       {/* Player names */}
       <View style={styles.teamRow}>
         <Text style={[styles.teamLabel, { color: leftColor }]} numberOfLines={1}>
-          {mySide === "left" ? playerName : opponentName ?? "Rakip"}
+          {mySide === "left" ? playerName : opponentName ?? t("common.opponent")}
         </Text>
-        <Text style={styles.vsLabel}>vs</Text>
+        <Text style={styles.vsLabel}>{t("common.vs")}</Text>
         <Text style={[styles.teamLabel, { color: rightColor }]} numberOfLines={1}>
-          {mySide === "right" ? playerName : opponentName ?? "Rakip"}
+          {mySide === "right" ? playerName : opponentName ?? t("common.opponent")}
         </Text>
       </View>
 
@@ -851,7 +849,7 @@ export default function OneVsOneScreen() {
           <View style={styles.progressCard}>
             <View style={[styles.progressBadge, { backgroundColor: leftColor + "22", borderColor: leftColor }]}>
               <Text style={[styles.progressBadgeNum, { color: leftColor }]}>{leftRemaining}</Text>
-              <Text style={[styles.progressBadgeLabel, { color: leftColor }]}>KALDI</Text>
+              <Text style={[styles.progressBadgeLabel, { color: leftColor }]}>{t("oneVsOne.remaining")}</Text>
             </View>
             <View style={styles.progressTrack}>
               <Animated.View style={[styles.progressFillLeft, { backgroundColor: leftColor, width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ["100%", "0%"] }) }]} />
@@ -860,7 +858,7 @@ export default function OneVsOneScreen() {
             </View>
             <View style={[styles.progressBadge, { backgroundColor: rightColor + "22", borderColor: rightColor }]}>
               <Text style={[styles.progressBadgeNum, { color: rightColor }]}>{rightRemaining}</Text>
-              <Text style={[styles.progressBadgeLabel, { color: rightColor }]}>KALDI</Text>
+              <Text style={[styles.progressBadgeLabel, { color: rightColor }]}>{t("oneVsOne.remaining")}</Text>
             </View>
           </View>
         </View>
@@ -881,7 +879,7 @@ export default function OneVsOneScreen() {
               disabled={phase !== "playing" || mySide !== "left"}
             >
               <Text style={[styles.pullBtnText, { color: leftColor }]}>
-                💪 ÇEK!
+                {t("oneVsOne.pullLeft")}
               </Text>
             </Pressable>
           </Animated.View>
@@ -898,7 +896,7 @@ export default function OneVsOneScreen() {
               disabled={phase !== "playing" || mySide !== "right"}
             >
               <Text style={[styles.pullBtnText, { color: rightColor }]}>
-                ÇEK! 💪
+                {t("oneVsOne.pullRight")}
               </Text>
             </Pressable>
           </Animated.View>
@@ -912,22 +910,27 @@ export default function OneVsOneScreen() {
             <View style={[styles.modalGlow, { backgroundColor: (isWinner ? myColor : opponentColor) + "33" }]} />
             <Text style={styles.modalEmoji}>{isWinner ? "🏆" : "😢"}</Text>
             <Text style={[styles.modalTitle, { color: isWinner ? myColor : opponentColor }]}>
-              {isWinner ? "KAZANDIN!" : "KAYBETTİN"}
+              {isWinner ? t("oneVsOne.youWon") : t("oneVsOne.youLost")}
             </Text>
             <Text style={styles.modalSubtitle}>
               {isWinner
-                ? `Tebrıkler ${playerName || "Oyuncu"}, ${opponentName ?? "Rakip"} karşısında zafer senin!`
-                : `${opponentName ?? "Rakip"} bu mücadeleyi kazandı. Bir dahaki sefere güçlü dön!`}
+                ? t("oneVsOne.winMessage", {
+                    name: playerName || t("common.player"),
+                    opponent: opponentName ?? t("common.opponent"),
+                  })
+                : t("oneVsOne.loseMessage", {
+                    opponent: opponentName ?? t("common.opponent"),
+                  })}
             </Text>
             <Text style={styles.modalStats}>
               {"\n"}
             </Text>
             <View style={styles.modalBtns}>
               <Pressable style={styles.modalBtnMain} onPress={playAgain}>
-                <Text style={styles.modalBtnMainText}>🔄 Yeniden Oyna</Text>
+                <Text style={styles.modalBtnMainText}>{t("oneVsOne.playAgain")}</Text>
               </Pressable>
               <Pressable style={styles.modalBtnSec} onPress={() => router.back()}>
-                <Text style={styles.modalBtnSecText}>Ana Menü</Text>
+                <Text style={styles.modalBtnSecText}>{t("common.mainMenu")}</Text>
               </Pressable>
             </View>
           </View>

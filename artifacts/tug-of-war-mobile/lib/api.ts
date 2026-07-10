@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import i18n, { getAcceptLanguage } from "@/lib/i18n";
+
 export const DEFAULT_API_BASE = "https://tugup-api.onrender.com";
 
 /** Host only, no trailing slash — e.g. https://tugup-api.onrender.com */
@@ -12,6 +14,20 @@ export function getApiUrl(): string {
 export function getApiBase(): string {
   if (Platform.OS === "web") return "/api";
   return `${getApiUrl()}/api`;
+}
+
+export function getApiHeaders(
+  extra?: Record<string, string>,
+  options?: { json?: boolean },
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Accept-Language": getAcceptLanguage(),
+    ...extra,
+  };
+  if (options?.json !== false) {
+    headers["Content-Type"] = "application/json";
+  }
+  return headers;
 }
 
 export interface PublicUser {
@@ -41,15 +57,19 @@ export async function apiFetch<T>(
   const res = await fetch(`${getApiUrl()}${path}`, {
     ...rest,
     headers: {
-      "Content-Type": "application/json",
+      ...getApiHeaders(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
+      ...(headers as Record<string, string> | undefined),
     },
   });
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((data as { error?: string; message?: string }).error ?? (data as { message?: string }).message ?? "İstek başarısız.");
+    throw new Error(
+      (data as { error?: string; message?: string }).error ??
+        (data as { message?: string }).message ??
+        i18n.t("common.requestFailed"),
+    );
   }
   return data as T;
 }

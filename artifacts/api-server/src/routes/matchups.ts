@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, asc } from "drizzle-orm";
 import { db, matchupsTable } from "@workspace/db";
+import { reqT } from "../lib/i18n";
 
 const router: IRouter = Router();
 
@@ -53,7 +54,7 @@ async function seedDefaultMatchups() {
 seedDefaultMatchups().catch(() => {});
 
 // GET /api/matchups
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   try {
     const rows = await db
       .select()
@@ -63,7 +64,7 @@ router.get("/", async (_req, res) => {
     res.json(rows);
   } catch (err) {
     console.error("matchups error", err);
-    res.status(500).json({ error: "Sunucu hatası." });
+    res.status(500).json({ error: reqT(req, "serverError") });
   }
 });
 

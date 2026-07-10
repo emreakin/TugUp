@@ -4,6 +4,7 @@ import { db, friendInvitesTable, usersTable } from "@workspace/db";
 import { generateId, requireAuth, type AuthedRequest } from "../lib/auth";
 import { addFriendship, listFriends, removeFriendship } from "../lib/friends";
 import { logger } from "../lib/logger";
+import { reqT } from "../lib/i18n";
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.get("/", requireAuth, async (req: AuthedRequest, res) => {
     return res.json(friends);
   } catch (err) {
     logger.error({ err }, "List friends error");
-    return res.status(500).json({ error: "Sunucu hatası." });
+    return res.status(500).json({ error: reqT(req, "serverError") });
   }
 });
 
@@ -41,12 +42,12 @@ router.post("/invite-link", requireAuth, async (req: AuthedRequest, res) => {
     return res.json({
       inviteId,
       url,
-      shareMessage: `TugUp'ta arkadaş olalım! ${url}`,
+      shareMessage: reqT(req, "friendShareMessage", { url }),
       expiresAt: expiresAt.toISOString(),
     });
   } catch (err) {
     logger.error({ err }, "Create friend invite error");
-    return res.status(500).json({ error: "Sunucu hatası." });
+    return res.status(500).json({ error: reqT(req, "serverError") });
   }
 });
 
@@ -60,15 +61,15 @@ router.get("/invite/:inviteId", async (req, res) => {
     .limit(1);
 
   if (rows.length === 0) {
-    return res.status(404).json({ error: "Davet bulunamadı." });
+    return res.status(404).json({ error: reqT(req, "inviteNotFound") });
   }
 
   const invite = rows[0];
   if (invite.usedBy) {
-    return res.status(410).json({ error: "Bu davet zaten kullanıldı." });
+    return res.status(410).json({ error: reqT(req, "inviteAlreadyUsed") });
   }
   if (invite.expiresAt.getTime() < Date.now()) {
-    return res.status(410).json({ error: "Davetin süresi doldu." });
+    return res.status(410).json({ error: reqT(req, "inviteExpired") });
   }
 
   const inviter = await db
@@ -103,12 +104,12 @@ router.post("/accept/:inviteId", requireAuth, async (req: AuthedRequest, res) =>
       .limit(1);
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: "Geçersiz veya süresi dolmuş davet." });
+      return res.status(404).json({ error: reqT(req, "invalidInvite") });
     }
 
     const invite = rows[0];
     if (invite.inviterId === userId) {
-      return res.status(400).json({ error: "Kendi davetini kabul edemezsin." });
+      return res.status(400).json({ error: reqT(req, "cannotAcceptOwnFriendInvite") });
     }
 
     await addFriendship(invite.inviterId, userId);
@@ -132,7 +133,7 @@ router.post("/accept/:inviteId", requireAuth, async (req: AuthedRequest, res) =>
     });
   } catch (err) {
     logger.error({ err }, "Accept friend invite error");
-    return res.status(500).json({ error: "Sunucu hatası." });
+    return res.status(500).json({ error: reqT(req, "serverError") });
   }
 });
 
@@ -140,7 +141,7 @@ router.post("/accept/:inviteId", requireAuth, async (req: AuthedRequest, res) =>
 router.delete("/:friendId", requireAuth, async (req: AuthedRequest, res) => {
   const friendId = String(req.params.friendId);
   if (friendId === req.userId) {
-    return res.status(400).json({ error: "Geçersiz istek." });
+    return res.status(400).json({ error: reqT(req, "invalidRequest") });
   }
 
   try {
@@ -148,7 +149,7 @@ router.delete("/:friendId", requireAuth, async (req: AuthedRequest, res) => {
     return res.json({ removed: true });
   } catch (err) {
     logger.error({ err }, "Remove friend error");
-    return res.status(500).json({ error: "Sunucu hatası." });
+    return res.status(500).json({ error: reqT(req, "serverError") });
   }
 });
 

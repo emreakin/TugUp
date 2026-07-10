@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -15,6 +15,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Trans, useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -43,8 +44,8 @@ const ROPE_IMG = require("@/assets/images/rope.png");
 interface Level {
   id: number;
   name: string;
-  emoji: string; // fallback emoji
-  image?: any; // custom image (e.g. require('@/assets/images/...'))
+  emoji: string;
+  image?: any;
   weight: number;
   timeLimit: number;
   unitPerTap: number;
@@ -53,32 +54,38 @@ interface Level {
   description: string;
 }
 
-const LEVELS: Level[] = [
+interface LevelConfig {
+  id: number;
+  emoji: string;
+  image?: any;
+  weight: number;
+  timeLimit: number;
+  unitPerTap: number;
+  driftPerSec: number;
+  accentColor: string;
+}
+
+const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 1,
-    name: "Bowling Topu",
     emoji: "🎳",
     weight: 6,
     timeLimit: 8,
     unitPerTap: 8,
     driftPerSec: 0.5,
     accentColor: "#22c55e",
-    description: "~6 kg · 8 saniye",
   },
   {
     id: 2,
-    name: "Kanepe",
     emoji: "🛋️",
     weight: 50,
     timeLimit: 8,
     unitPerTap: 4.5,
     driftPerSec: 1.0,
     accentColor: "#f59e0b",
-    description: "~50 kg · 8 saniye",
   },
   {
     id: 3,
-    name: "Çamaşır Makinesi",
     emoji: "🌀",
     image: require("@/assets/images/washing-machine.png"),
     weight: 100,
@@ -86,11 +93,9 @@ const LEVELS: Level[] = [
     unitPerTap: 4,
     driftPerSec: 1.5,
     accentColor: "#3b82f6",
-    description: "~100 kg · 8 saniye",
   },
   {
     id: 4,
-    name: "Buzdolabı",
     emoji: "🧊",
     image: require("@/assets/fridge_ai.png"),
     weight: 200,
@@ -98,11 +103,9 @@ const LEVELS: Level[] = [
     unitPerTap: 3.5,
     driftPerSec: 2.0,
     accentColor: "#06b6d4",
-    description: "~200 kg · 10 saniye",
   },
   {
     id: 5,
-    name: "ATV",
     emoji: "🏍️",
     image: require("@/assets/images/atv.png"),
     weight: 300,
@@ -110,33 +113,27 @@ const LEVELS: Level[] = [
     unitPerTap: 2,
     driftPerSec: 2.5,
     accentColor: "#ef4444",
-    description: "~300 kg · 10 saniye",
   },
   {
     id: 6,
-    name: "Boğa",
     emoji: "🐂",
     weight: 1000,
     timeLimit: 10,
     unitPerTap: 1.5,
     driftPerSec: 2.0,
     accentColor: "#92400e",
-    description: "~1000 kg · 10 saniye",
   },
   {
     id: 7,
-    name: "Araba",
     emoji: "🚗",
     weight: 1500,
     timeLimit: 10,
     unitPerTap: 1.2,
     driftPerSec: 2.0,
     accentColor: "#8b5cf6",
-    description: "~1500 kg · 10 saniye",
   },
   {
     id: 8,
-    name: "SUV",
     emoji: "🚙",
     image: require("@/assets/images/suv.png"),
     weight: 2500,
@@ -144,11 +141,9 @@ const LEVELS: Level[] = [
     unitPerTap: 0.9,
     driftPerSec: 4.0,
     accentColor: "#ec4899",
-    description: "~2500 kg · 10 saniye",
   },
   {
     id: 9,
-    name: "Kamyonet",
     emoji: "🛻",
     image: require("@/assets/images/pickup-truck.png"),
     weight: 3500,
@@ -156,11 +151,9 @@ const LEVELS: Level[] = [
     unitPerTap: 0.8,
     driftPerSec: 4.5,
     accentColor: "#14b8a6",
-    description: "~3500 kg · 10 saniye",
   },
   {
     id: 10,
-    name: "Fil",
     emoji: "🐘",
     image: require("@/assets/images/elephant.png"),
     weight: 5000,
@@ -168,11 +161,9 @@ const LEVELS: Level[] = [
     unitPerTap: 0.7,
     driftPerSec: 5.0,
     accentColor: "#64748b",
-    description: "~5000 kg · 10 saniye",
   },
   {
     id: 11,
-    name: "T-Rex",
     emoji: "🦖",
     image: require("@/assets/images/trex.png"),
     weight: 7500,
@@ -180,22 +171,18 @@ const LEVELS: Level[] = [
     unitPerTap: 0.5,
     driftPerSec: 6.0,
     accentColor: "#dc2626",
-    description: "~7500 kg · 12 saniye",
   },
   {
     id: 12,
-    name: "Balina",
     emoji: "🐋",
     weight: 10000,
     timeLimit: 12,
     unitPerTap: 0.45,
     driftPerSec: 6.5,
     accentColor: "#1e40af",
-    description: "~10000 kg · 12 saniye",
   },
   {
     id: 13,
-    name: "Otobüs",
     emoji: "🚌",
     image: require("@/assets/images/bus.png"),
     weight: 12000,
@@ -203,31 +190,37 @@ const LEVELS: Level[] = [
     unitPerTap: 0.4,
     driftPerSec: 7.0,
     accentColor: "#f97316",
-    description: "~12000 kg · 12 saniye",
   },
   {
     id: 14,
-    name: "Yat",
     emoji: "⚓",
     weight: 15000,
     timeLimit: 15,
     unitPerTap: 0.35,
     driftPerSec: 7.5,
     accentColor: "#0891b2",
-    description: "~15000 kg · 15 saniye",
   },
   {
     id: 15,
-    name: "Vinç",
     emoji: "🏗️",
     weight: 20000,
     timeLimit: 15,
     unitPerTap: 0.3,
     driftPerSec: 8.0,
     accentColor: "#eab308",
-    description: "~20000 kg · 15 saniye",
   },
 ];
+
+function buildLevels(t: (key: string, options?: Record<string, unknown>) => string): Level[] {
+  return LEVEL_CONFIGS.map((cfg) => ({
+    ...cfg,
+    name: t(`quickGame.levelList.${cfg.id}.name`),
+    description: t(`quickGame.levelList.${cfg.id}.description`, {
+      weight: cfg.weight,
+      seconds: cfg.timeLimit,
+    }),
+  }));
+}
 
 // ─── Character component (same as 1v1) ───────────────────────────────────────
 function Character({
@@ -330,6 +323,8 @@ type Phase = "levels" | "playing" | "celebrating" | "win" | "lose";
 
 export default function QuickGameScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const levels = useMemo(() => buildLevels(t), [t]);
   const topInset = Platform.OS === "web" ? 16 : insets.top;
   const bottomInset = Platform.OS === "web" ? 16 : insets.bottom;
 
@@ -340,7 +335,8 @@ export default function QuickGameScreen() {
 
   // ── State ────────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("levels");
-  const [currentLevel, setCurrentLevel] = useState<Level>(LEVELS[0]);
+  const [currentLevelId, setCurrentLevelId] = useState(1);
+  const currentLevel = levels.find((level) => level.id === currentLevelId) ?? levels[0];
   const [unlockedUpTo, setUnlockedUpTo] = useState(1);
   const [timeLeft, setTimeLeft] = useState(0);
   // Global joker pool — persisted across sessions
@@ -574,7 +570,7 @@ export default function QuickGameScreen() {
       timeLeftRef.current = level.timeLimit;
       setPosition(0);
       setTimeLeft(level.timeLimit);
-      setCurrentLevel(level);
+      setCurrentLevelId(level.id);
       setIsNewRecord(false);
       setPhase("playing");
 
@@ -660,7 +656,7 @@ export default function QuickGameScreen() {
     // Win check
     if (positionRef.current >= WIN_THRESHOLD) {
       clearIntervals();
-      const nextUnlocked = Math.min(LEVELS.length, Math.max(unlockedUpTo, currentLevel.id + 1));
+      const nextUnlocked = Math.min(LEVEL_CONFIGS.length, Math.max(unlockedUpTo, currentLevel.id + 1));
       setUnlockedUpTo(nextUnlocked);
       saveProgress(nextUnlocked, timeJokersLeft, bombJokersLeft);
       // Best time: remaining seconds = timeLeftRef (includes any joker bonus)
@@ -696,7 +692,7 @@ export default function QuickGameScreen() {
     const canAddTime = timeJokersLeft < maxJokers;
     const canAddBomb = bombJokersLeft < maxJokers;
     if (!canAddTime && !canAddBomb) {
-      Alert.alert("Joker Depo Dolu", "Her iki joker de zaten maksimum sınıra ulaştı (5).");
+      Alert.alert(t("quickGame.jokerFullTitle"), t("quickGame.jokerFullMessage"));
       return;
     }
 
@@ -729,7 +725,7 @@ export default function QuickGameScreen() {
       if (Platform.OS === "web") {
         onReward();
       } else {
-        Alert.alert("Reklam yüklenemedi", "Lütfen tekrar dene.");
+        Alert.alert(t("quickGame.adFailedTitle"), t("quickGame.adFailedMessage"));
         setAdLoading(false);
       }
     };
@@ -746,7 +742,7 @@ export default function QuickGameScreen() {
       // Web preview — skip ad
       onReward();
     }
-  }, [unlockedUpTo, timeJokersLeft, bombJokersLeft, saveProgress]);
+  }, [unlockedUpTo, timeJokersLeft, bombJokersLeft, saveProgress, t]);
 
   // ── Joker: Zaman Jokeri (+2 saniye) ──────────────────────────────────────
   const handleTimeJoker = useCallback(() => {
@@ -789,13 +785,13 @@ export default function QuickGameScreen() {
 
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>← Ana Menü</Text>
+            <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>⚡ Quick Game</Text>
+          <Text style={styles.headerTitle}>{t("quickGame.title")}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
-        <Text style={styles.levelSubtitle}>Bir seviye seç ve çekişi başlat!</Text>
+        <Text style={styles.levelSubtitle}>{t("quickGame.subtitle")}</Text>
 
         {/* Joker stock + earn bar */}
         <View style={styles.jokerStockBar}>
@@ -816,7 +812,7 @@ export default function QuickGameScreen() {
             disabled={(timeJokersLeft >= 3 && bombJokersLeft >= 3) || adLoading}
           >
             <Text style={styles.jokerStockAdText}>
-              {adLoading ? "⏳ Yükleniyor…" : "🎬 Joker Kazan (+1)"}
+              {adLoading ? t("quickGame.loading") : t("quickGame.earnJoker")}
             </Text>
           </Pressable>
         </View>
@@ -826,7 +822,7 @@ export default function QuickGameScreen() {
           contentContainerStyle={styles.levelListContent}
           showsVerticalScrollIndicator={false}
         >
-          {LEVELS.map((level) => {
+          {levels.map((level) => {
             const unlocked = level.id <= unlockedUpTo;
             return (
               <Pressable
@@ -858,7 +854,7 @@ export default function QuickGameScreen() {
                   <Text style={styles.levelDesc}>{level.description}</Text>
                   {unlocked && bestTimes[level.id] !== undefined && (
                     <Text style={styles.levelBestTime}>
-                      🥇 {bestTimes[level.id]} sn
+                      {t("quickGame.bestTime", { seconds: bestTimes[level.id] })}
                     </Text>
                   )}
                 </View>
@@ -882,10 +878,10 @@ export default function QuickGameScreen() {
             <View style={[styles.modalCard, { paddingVertical: 28 }]}>
               <Text style={styles.modalEmoji}>🎁</Text>
               <Text style={[styles.modalTitle, { color: "#fbbf24", fontSize: 22 }]}>
-                Joker Kazan!
+                {t("quickGame.jokerEarnTitle")}
               </Text>
               <Text style={[styles.modalSubtitle, { marginBottom: 20 }]}>
-                Hangi jokeri 1 artırmak istiyorsun?
+                {t("quickGame.jokerEarnSubtitle")}
               </Text>
 
               <Pressable
@@ -904,7 +900,10 @@ export default function QuickGameScreen() {
                 }}
               >
                 <Text style={styles.jokerPickerBtnText}>
-                  ⏳ +2 sn Joker{timeJokersLeft >= 3 ? " (Dolu)" : ` (${timeJokersLeft} → ${Math.min(3, timeJokersLeft + 1)})`}
+                  {t("quickGame.timeJokerPicker")}
+                  {timeJokersLeft >= 3
+                    ? ` ${t("quickGame.full")}`
+                    : ` (${timeJokersLeft} → ${Math.min(3, timeJokersLeft + 1)})`}
                 </Text>
               </Pressable>
 
@@ -924,7 +923,10 @@ export default function QuickGameScreen() {
                 }}
               >
                 <Text style={styles.jokerPickerBtnText}>
-                  💥 +25 Joker{bombJokersLeft >= 3 ? " (Dolu)" : ` (${bombJokersLeft} → ${Math.min(3, bombJokersLeft + 1)})`}
+                  {t("quickGame.bombJokerPicker")}
+                  {bombJokersLeft >= 3
+                    ? ` ${t("quickGame.full")}`
+                    : ` (${bombJokersLeft} → ${Math.min(3, bombJokersLeft + 1)})`}
                 </Text>
               </Pressable>
 
@@ -932,7 +934,7 @@ export default function QuickGameScreen() {
                 style={[styles.jokerPickerBtn, styles.jokerPickerBtnCancel]}
                 onPress={() => setJokerPickerVisible(false)}
               >
-                <Text style={[styles.jokerPickerBtnText, { color: "#64748b" }]}>İptal</Text>
+                <Text style={[styles.jokerPickerBtnText, { color: "#64748b" }]}>{t("common.cancel")}</Text>
               </Pressable>
             </View>
           </View>
@@ -943,41 +945,46 @@ export default function QuickGameScreen() {
           <View style={styles.tutorialOverlay}>
             <View style={styles.tutorialCard}>
               <Text style={styles.tutorialEmoji}>⚡</Text>
-              <Text style={styles.tutorialTitle}>Welcome to Quick Game!</Text>
+              <Text style={styles.tutorialTitle}>{t("quickGame.tutorial.title")}</Text>
 
               <View style={styles.tutorialRow}>
                 <Text style={styles.tutorialBullet}>✨</Text>
-                <Text style={styles.tutorialRowText}>
-                  Bir seviye seç ve ekrandaki <Text style={{ fontFamily: "Inter_700Bold", color: "#ef4444" }}>“ÇEK!”</Text> butonuna hızlıca basarak objeyi kendi tarafına çek.
-                </Text>
+                <Trans
+                  i18nKey="quickGame.tutorial.step1"
+                  parent={Text}
+                  style={styles.tutorialRowText}
+                  components={{
+                    bold: <Text style={{ fontFamily: "Inter_700Bold", color: "#ef4444" }} />,
+                  }}
+                />
               </View>
 
               <View style={styles.tutorialRow}>
                 <Text style={styles.tutorialBullet}>⏳</Text>
-                <Text style={styles.tutorialRowText}>
-                  Zaman dolmadan objeyi kendi çizgine ulaştırmalısın. Kalan süre ne kadar fazlaysa rekorun o kadar iyi!
-                </Text>
+                <Text style={styles.tutorialRowText}>{t("quickGame.tutorial.step2")}</Text>
               </View>
 
               <View style={styles.tutorialRow}>
                 <Text style={styles.tutorialBullet}>🛡️</Text>
-                <Text style={styles.tutorialRowText}>
-                  Objeyi çektiğinde onu zıt yönde iten bir kuvvet var. Her 3-5 saniyede 10 birim geri gidebilir!
-                </Text>
+                <Text style={styles.tutorialRowText}>{t("quickGame.tutorial.step3")}</Text>
               </View>
 
               <View style={styles.tutorialRow}>
                 <Text style={styles.tutorialBullet}>🎲</Text>
-                <Text style={styles.tutorialRowText}>
-                  Jokerler ile avantaj sağla: <Text style={{ fontFamily: "Inter_700Bold", color: "#3b82f6" }}>⏳ +2 sn</Text> zaman ekle veya <Text style={{ fontFamily: "Inter_700Bold", color: "#f59e0b" }}>💥 +%25</Text> kendi tarafına yaklaştır. Video izleyerek joker kazanabilirsin.
-                </Text>
+                <Trans
+                  i18nKey="quickGame.tutorial.step4"
+                  parent={Text}
+                  style={styles.tutorialRowText}
+                  components={{
+                    time: <Text style={{ fontFamily: "Inter_700Bold", color: "#3b82f6" }} />,
+                    bomb: <Text style={{ fontFamily: "Inter_700Bold", color: "#f59e0b" }} />,
+                  }}
+                />
               </View>
 
               <View style={styles.tutorialRow}>
                 <Text style={styles.tutorialBullet}>🔓</Text>
-                <Text style={styles.tutorialRowText}>
-                  Her seviyeyi geçtiğinde sonrakinin kilidi açılır. Toplamda 15 farklı obje seni bekliyor!
-                </Text>
+                <Text style={styles.tutorialRowText}>{t("quickGame.tutorial.step5")}</Text>
               </View>
 
               <Pressable
@@ -987,7 +994,7 @@ export default function QuickGameScreen() {
                   AsyncStorage.setItem(TUTORIAL_SHOWN_KEY, "true").catch(() => {});
                 }}
               >
-                <Text style={styles.tutorialBtnText}>Anladım, Başlayalım! 💪</Text>
+                <Text style={styles.tutorialBtnText}>{t("quickGame.tutorial.start")}</Text>
               </Pressable>
             </View>
           </View>
@@ -998,7 +1005,7 @@ export default function QuickGameScreen() {
 
   // ── WIN / LOSE modal (shown over game area) ────────────────────────────────
   const isWin = phase === "win";
-  const nextLevel = LEVELS.find((l) => l.id === currentLevel.id + 1);
+  const nextLevel = levels.find((l) => l.id === currentLevel.id + 1);
 
   // ── In-game joker state ───────────────────────────────────────────────────
   const bombLocked = currentLevel.id <= 4;
@@ -1021,18 +1028,18 @@ export default function QuickGameScreen() {
             }}
             style={styles.backBtn}
           >
-            <Text style={styles.backText}>← Ana Menü</Text>
+            <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>⚡ Quick Game</Text>
+          <Text style={styles.headerTitle}>{t("quickGame.title")}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         {/* Level name row — mirrors 1v1 teamRow */}
         <View style={styles.teamRow}>
           <Text style={[styles.teamLabel, { color: playerColor }]} numberOfLines={1}>
-            Sen
+            {t("common.you")}
           </Text>
-          <Text style={styles.vsLabel}>vs</Text>
+          <Text style={styles.vsLabel}>{t("common.vs")}</Text>
           <Text
             style={[styles.teamLabel, { color: objectColor }]}
             numberOfLines={1}
@@ -1138,7 +1145,7 @@ export default function QuickGameScreen() {
                 %{Math.round((position / WIN_THRESHOLD) * 100)}
               </Text>
               <Text style={[styles.progressBadgeLabel, { color: playerColor }]}>
-                ÇEKİLDİ
+                {t("quickGame.pulled")}
               </Text>
             </View>
 
@@ -1206,7 +1213,7 @@ export default function QuickGameScreen() {
       <View style={styles.gameBottom}>
         {/* Joker row */}
         <View style={styles.jokerSection}>
-          <Text style={styles.jokerSectionLabel}>JOKERLER</Text>
+          <Text style={styles.jokerSectionLabel}>{t("quickGame.jokers")}</Text>
           <View style={styles.jokerButtonsRow}>
             <Pressable
               style={[
@@ -1218,7 +1225,9 @@ export default function QuickGameScreen() {
               disabled={timeJokerDisabled || phase !== "playing"}
             >
               <Text style={styles.jokerBtnText}>
-                {timeJokersLeft <= 0 ? "⏳ Bitti" : `⏳ +2 sn (${timeJokersLeft})`}
+                {timeJokersLeft <= 0
+                  ? t("quickGame.timeJokerDone")
+                  : t("quickGame.timeJoker", { count: timeJokersLeft })}
               </Text>
             </Pressable>
             <Pressable
@@ -1233,10 +1242,10 @@ export default function QuickGameScreen() {
             >
               <Text style={[styles.jokerBtnText, styles.jokerBombText]}>
                 {bombLocked
-                  ? "💥 Lv5'te açılır"
+                  ? t("quickGame.bombLocked")
                   : bombJokersLeft <= 0
-                  ? "💥 Bitti"
-                  : `💥 +%25 (${bombJokersLeft})`}
+                  ? t("quickGame.bombDone")
+                  : t("quickGame.bombJoker", { count: bombJokersLeft })}
               </Text>
             </Pressable>
           </View>
@@ -1260,7 +1269,7 @@ export default function QuickGameScreen() {
               disabled={phase !== "playing"}
             >
               <Text style={[styles.pullBtnText, { color: playerColor }]}>
-                💪 ÇEK!
+                {t("common.pull")}
               </Text>
             </Pressable>
           </Animated.View>
@@ -1304,18 +1313,18 @@ export default function QuickGameScreen() {
                 { color: isWin ? playerColor : objectColor },
               ]}
             >
-              {isWin ? "KAZANDIN!" : "SÜRE DOLDU!"}
+              {isWin ? t("quickGame.youWon") : t("quickGame.timeUp")}
             </Text>
             <Text style={[styles.modalSubtitle, currentLevel.name.length > 10 && { fontSize: 13 }]}>
               {isWin
-                ? `${currentLevel.name} çizgiye ulaştı!`
-                : `${currentLevel.name} çizgiye ulaşamadı.`}
+                ? t("quickGame.winSubtitle", { name: currentLevel.name })
+                : t("quickGame.loseSubtitle", { name: currentLevel.name })}
             </Text>
             {isWin && isNewRecord && (
               <Text style={styles.modalRecord}>
                 {timeLeftRef.current > 0
-                  ? `🥇 YENİ REKOR! Kalan: ${timeLeftRef.current} sn`
-                  : `🥇 YENİ REKOR! Son saniyede bitirildi!`}
+                  ? t("quickGame.newRecord", { seconds: timeLeftRef.current })
+                  : t("quickGame.newRecordLastSecond")}
               </Text>
             )}
 
@@ -1324,7 +1333,7 @@ export default function QuickGameScreen() {
                 style={styles.modalBtnMain}
                 onPress={() => startGame(currentLevel)}
               >
-                <Text style={styles.modalBtnMainText}>🔄 Tekrar Oyna</Text>
+                <Text style={styles.modalBtnMainText}>{t("quickGame.playAgain")}</Text>
               </Pressable>
 
               {isWin && nextLevel && (
@@ -1342,7 +1351,7 @@ export default function QuickGameScreen() {
                       <Text style={styles.modalBtnMainText}>{nextLevel.emoji}</Text>
                     )}
                     <Text style={[styles.modalBtnMainText, { fontSize: nextLevel.name.length > 10 ? 14 : 17 }]}>
-                      Sonraki: {nextLevel.name}
+                      {t("quickGame.nextLevel", { name: nextLevel.name })}
                     </Text>
                   </View>
                 </Pressable>
@@ -1353,9 +1362,7 @@ export default function QuickGameScreen() {
                   style={[styles.modalBtnMain, { backgroundColor: "#8b5cf6" }]}
                   onPress={() => setPhase("levels")}
                 >
-                  <Text style={styles.modalBtnMainText}>
-                    🎉 Tüm Seviyeleri Bitirdin!
-                  </Text>
+                  <Text style={styles.modalBtnMainText}>{t("quickGame.allComplete")}</Text>
                 </Pressable>
               )}
 
@@ -1366,13 +1373,13 @@ export default function QuickGameScreen() {
                     setPhase("levels");
                   }}
                 >
-                  <Text style={styles.modalBtnSecText}>Seviyeler</Text>
+                  <Text style={styles.modalBtnSecText}>{t("quickGame.levelsBtn")}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.modalBtnSec, { flex: 1 }]}
                   onPress={() => router.push("/")}
                 >
-                  <Text style={styles.modalBtnSecText}>Ana Sayfa</Text>
+                  <Text style={styles.modalBtnSecText}>{t("common.homePage")}</Text>
                 </Pressable>
               </View>
             </View>

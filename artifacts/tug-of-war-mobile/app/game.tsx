@@ -14,9 +14,10 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { getApiBase } from "@/lib/api";
+import { getApiBase, getApiHeaders } from "@/lib/api";
 
 // AdMob is loaded dynamically on native only — see ad-helper.native.ts
 
@@ -43,15 +44,15 @@ function msUntilEndOfWeek(): number {
   return nextMonday.getTime() - now.getTime();
 }
 
-// "6G 14:23:05" format (G = gün/day)
-function formatCountdown(ms: number): string {
+// "6G 14:23:05" format (G/D = day suffix)
+function formatCountdown(ms: number, daySuffix: string): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const d = Math.floor(total / 86400);
   const h = Math.floor((total % 86400) / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${d}G ${pad(h)}:${pad(m)}:${pad(s)}`;
+  return `${d}${daySuffix} ${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
 const CHARACTER_IMG = require("@/assets/images/character.png");
@@ -93,6 +94,7 @@ function Character({
 
 export default function GameScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     matchupId: string;
     left: string;
@@ -105,8 +107,8 @@ export default function GameScreen() {
   }>();
 
   const matchupId = params.matchupId ?? "default";
-  const left = params.left ?? "Sol";
-  const right = params.right ?? "Sağ";
+  const left = params.left ?? t("game.defaultLeft");
+  const right = params.right ?? t("game.defaultRight");
   const leftColor = params.leftColor ?? "#ef4444";
   const rightColor = params.rightColor ?? "#3b82f6";
   const emoji = params.emoji ?? "🏆";
@@ -161,7 +163,9 @@ export default function GameScreen() {
 
   // Load daily ad reward limit on mount
   useEffect(() => {
-    fetch(`${getApiBase()}/votes/${encodeURIComponent(matchupId)}/reward-limit`)
+    fetch(`${getApiBase()}/votes/${encodeURIComponent(matchupId)}/reward-limit`, {
+      headers: getApiHeaders({}, { json: false }),
+    })
       .then((res) => {
         if (!res.ok) return;
         return res.json();
@@ -213,20 +217,24 @@ export default function GameScreen() {
   );
 
   // Weekly countdown to next Monday 00:00:00
-  const [countdown, setCountdown] = useState(() => formatCountdown(msUntilEndOfWeek()));
+  const [countdown, setCountdown] = useState(() =>
+    formatCountdown(msUntilEndOfWeek(), t("game.countdownDaySuffix")),
+  );
   useEffect(() => {
     const id = setInterval(() => {
-      setCountdown(formatCountdown(msUntilEndOfWeek()));
+      setCountdown(formatCountdown(msUntilEndOfWeek(), t("game.countdownDaySuffix")));
     }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [t]);
 
   // Load current vote state from server on mount and poll every 15s
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`${getApiBase()}/votes/${encodeURIComponent(matchupId)}`);
+        const res = await fetch(`${getApiBase()}/votes/${encodeURIComponent(matchupId)}`, {
+          headers: getApiHeaders({}, { json: false }),
+        });
         if (!res.ok) return;
         const data: { offset: number; leftPulls: number; rightPulls: number; winThreshold?: number } = await res.json();
         if (cancelled) return;
@@ -279,6 +287,7 @@ export default function GameScreen() {
       const clearCooldownOnly = () => {
         fetch(`${getApiBase()}/votes/${encodeURIComponent(matchupId)}/reward`, {
           method: "POST",
+          headers: getApiHeaders(),
         })
           .then((res) => {
             if (res.ok) {
@@ -291,12 +300,12 @@ export default function GameScreen() {
             } else if (res.status === 429) {
               return res.json().then((data: { remaining?: number }) => {
                 if (data?.remaining != null) setAdRewardsRemaining(data.remaining);
-                Alert.alert("Günlük Limit Doldu", "Bugünkü 3 video hakkın bitti. Yarın tekrar dene!");
+                Alert.alert(t("game.dailyLimitTitle"), t("game.dailyLimitMessage"));
               });
             }
           })
           .catch(() => {
-            Alert.alert("Hata", "Bağlantı sorunu.");
+            Alert.alert(t("common.error"), t("game.connectionError"));
           })
           .finally(onComplete);
       };
@@ -316,7 +325,7 @@ export default function GameScreen() {
         clearCooldownOnly();
       }
     },
-    [matchupId]
+    [matchupId, t]
   );
 
   const handlePull = useCallback(
@@ -337,7 +346,7 @@ export default function GameScreen() {
           `${getApiBase()}/votes/${encodeURIComponent(matchupId)}`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getApiHeaders(),
             body: JSON.stringify({ side }),
           }
         );
@@ -381,7 +390,7 @@ export default function GameScreen() {
         // Network error — silently ignore
       }
     },
-    [gameState, cooldownSecs, matchupId]
+    [gameState, cooldownSecs, matchupId, t]
   );
 
   const resetGame = () => {
@@ -407,7 +416,7 @@ export default function GameScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Ana Menü</Text>
+          <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
         </Pressable>
         <Text style={styles.headerTitle}>{emoji}</Text>
         <View style={styles.headerSpacer} />
@@ -418,7 +427,7 @@ export default function GameScreen() {
         <Text style={[styles.teamLabel, { color: leftColor }]} numberOfLines={1}>
           {leftLeads ? "👑 " : ""}{left}
         </Text>
-        <Text style={styles.vsLabel}>vs</Text>
+        <Text style={styles.vsLabel}>{t("common.vs")}</Text>
         <Text style={[styles.teamLabel, { color: rightColor }]} numberOfLines={1}>
           {right}{rightLeads ? " 👑" : ""}
         </Text>
@@ -473,7 +482,7 @@ export default function GameScreen() {
 
         {/* Weekly countdown to next reset */}
         <View style={styles.countdownWrap} pointerEvents="none">
-          <Text style={styles.countdownLabel}>KALAN SÜRE</Text>
+          <Text style={styles.countdownLabel}>{t("game.timeRemaining")}</Text>
           <Text style={styles.countdownText}>{countdown}</Text>
         </View>
 
@@ -484,7 +493,7 @@ export default function GameScreen() {
               <Text style={[styles.progressBadgeNum, { color: leftColor }]}>
                 {Math.max(0, maxOffset + offset)}
               </Text>
-              <Text style={[styles.progressBadgeLabel, { color: leftColor }]}>KALDI</Text>
+              <Text style={[styles.progressBadgeLabel, { color: leftColor }]}>{t("game.remaining")}</Text>
             </View>
 
             <View style={styles.progressTrack}>
@@ -529,7 +538,7 @@ export default function GameScreen() {
               <Text style={[styles.progressBadgeNum, { color: rightColor }]}>
                 {Math.max(0, maxOffset - offset)}
               </Text>
-              <Text style={[styles.progressBadgeLabel, { color: rightColor }]}>KALDI</Text>
+              <Text style={[styles.progressBadgeLabel, { color: rightColor }]}>{t("game.remaining")}</Text>
             </View>
           </View>
         </View>
@@ -552,7 +561,7 @@ export default function GameScreen() {
               <Text style={[styles.pullBtnText, { color: leftColor }]}>
                 {cooldownSecs > 0
                   ? `⏳ ${Math.floor(cooldownSecs / 60)}:${String(cooldownSecs % 60).padStart(2, "0")}`
-                  : "💪 ÇEK!"}
+                  : t("game.pullLeft")}
               </Text>
             </Pressable>
           </Animated.View>
@@ -571,7 +580,7 @@ export default function GameScreen() {
               <Text style={[styles.pullBtnText, { color: rightColor }]}>
                 {cooldownSecs > 0
                   ? `${Math.floor(cooldownSecs / 60)}:${String(cooldownSecs % 60).padStart(2, "0")} ⏳`
-                  : "ÇEK! 💪"}
+                  : t("game.pullRight")}
               </Text>
             </Pressable>
           </Animated.View>
@@ -588,7 +597,7 @@ export default function GameScreen() {
             disabled={adLoading}
           >
             <Text style={styles.adBtnText}>
-              {adLoading ? "⏳ Video yükleniyor…" : `🎬 Video İzle (${adRewardsRemaining} kaldı) → 💪 Hemen Çek`}
+              {adLoading ? t("game.adLoading") : t("game.watchAd", { remaining: adRewardsRemaining })}
             </Text>
           </Pressable>
         )}
@@ -600,7 +609,7 @@ export default function GameScreen() {
           <View style={[styles.modalBox, { borderColor: winnerColor }]}>
             <Text style={styles.modalTrophy}>🏆</Text>
             <Text style={[styles.modalWinner, { color: winnerColor }]}>{winner}</Text>
-            <Text style={styles.modalKazandi}>Kazandı!</Text>
+            <Text style={styles.modalKazandi}>{t("game.won")}</Text>
             <Text style={styles.modalConfetti}>
               {gameState === "left_wins" ? "🎉" : "🎊"}
             </Text>
@@ -609,13 +618,13 @@ export default function GameScreen() {
                 style={[styles.modalBtn, styles.modalBtnPrimary]}
                 onPress={resetGame}
               >
-                <Text style={styles.modalBtnText}>Tekrar Oyna 🔄</Text>
+                <Text style={styles.modalBtnText}>{t("game.playAgain")}</Text>
               </Pressable>
               <Pressable
                 style={[styles.modalBtn, styles.modalBtnSecondary]}
                 onPress={() => router.back()}
               >
-                <Text style={styles.modalBtnTextSecondary}>Menü ←</Text>
+                <Text style={styles.modalBtnTextSecondary}>{t("game.menu")}</Text>
               </Pressable>
             </View>
           </View>

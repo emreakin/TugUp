@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request } from "express";
 import { createHash } from "crypto";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { db, matchupSuggestionsTable, suggestionVotesTable } from "@workspace/db";
+import { reqT } from "../lib/i18n";
 
 const router: IRouter = Router();
 
@@ -58,7 +59,7 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   const { leftTeam, rightTeam } = req.body ?? {};
   if (!isValidTeam(leftTeam) || !isValidTeam(rightTeam)) {
-    res.status(400).json({ error: "Geçersiz istek" });
+    res.status(400).json({ error: reqT(req, "invalidRequest") });
     return;
   }
 
@@ -74,7 +75,7 @@ router.post("/", async (req, res) => {
 router.post("/:id/vote", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) {
-    res.status(400).json({ error: "Geçersiz id" });
+    res.status(400).json({ error: reqT(req, "invalidSuggestionId") });
     return;
   }
 
@@ -87,7 +88,7 @@ router.post("/:id/vote", async (req, res) => {
     .limit(1);
 
   if (suggestion.length === 0) {
-    res.status(404).json({ error: "Bulunamadı" });
+    res.status(404).json({ error: reqT(req, "notFound") });
     return;
   }
 

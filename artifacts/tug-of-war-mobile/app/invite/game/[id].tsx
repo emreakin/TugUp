@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,6 +22,7 @@ export default function GameInviteScreen() {
   const topInset = Platform.OS === "web" ? 16 : insets.top;
   const bottomInset = Platform.OS === "web" ? 16 : insets.bottom;
   const { ensureSession } = useAuth();
+  const { t } = useTranslation();
 
   const [playerName, setPlayerName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -65,7 +67,7 @@ export default function GameInviteScreen() {
         },
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Oyuna katılınamadı.");
+      setError(err instanceof Error ? err.message : t("invite.game.joinFailed"));
     } finally {
       setLoading(false);
     }
@@ -84,12 +86,12 @@ export default function GameInviteScreen() {
       <StatusBar barStyle="light-content" />
       <View style={styles.content}>
         <Text style={styles.emoji}>⚔️</Text>
-        <Text style={styles.title}>1v1 Daveti</Text>
-        <Text style={styles.subtitle}>Arkadaşın seni halat çekmeye davet etti!</Text>
+        <Text style={styles.title}>{t("invite.game.title")}</Text>
+        <Text style={styles.subtitle}>{t("invite.game.subtitle")}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Kullanıcı Adı"
+          placeholder={t("common.usernamePlaceholder")}
           placeholderTextColor="#475569"
           value={playerName}
           onChangeText={setPlayerName}
@@ -110,12 +112,12 @@ export default function GameInviteScreen() {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.joinBtnText}>Oyuna Katıl</Text>
+            <Text style={styles.joinBtnText}>{t("invite.game.join")}</Text>
           )}
         </Pressable>
 
         <Pressable onPress={() => router.replace("/")} style={styles.cancelBtn}>
-          <Text style={styles.cancelBtnText}>İptal</Text>
+          <Text style={styles.cancelBtnText}>{t("common.cancel")}</Text>
         </Pressable>
       </View>
     </View>

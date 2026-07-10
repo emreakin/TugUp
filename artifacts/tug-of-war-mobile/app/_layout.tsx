@@ -14,7 +14,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LocaleProvider } from "@/contexts/LocaleContext";
 import { initMobileAds } from "@/native/ad-helper";
+import "@/lib/i18n";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,6 +35,7 @@ function RootLayoutNav() {
       <Stack.Screen name="online" />
       <Stack.Screen name="1v1" />
       <Stack.Screen name="friends" />
+      <Stack.Screen name="settings" />
       <Stack.Screen name="invite/friend/[id]" />
       <Stack.Screen name="invite/game/[id]" />
       <Stack.Screen name="game" />
@@ -59,11 +62,13 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </AuthProvider>
+          <LocaleProvider>
+            <AuthProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <RootLayoutNav />
+              </GestureHandlerRootView>
+            </AuthProvider>
+          </LocaleProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +21,7 @@ import { apiFetch, type FriendSummary } from "@/lib/api";
 
 export default function FriendsScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const topInset = Platform.OS === "web" ? 16 : insets.top;
   const bottomInset = Platform.OS === "web" ? 16 : insets.bottom;
   const { token, user, ensureSession } = useAuth();
@@ -62,7 +64,7 @@ export default function FriendsScreen() {
         url: data.url,
       });
     } catch (err) {
-      Alert.alert("Hata", err instanceof Error ? err.message : "Davet oluşturulamadı.");
+      Alert.alert(t("common.error"), err instanceof Error ? err.message : t("friends.inviteFailed"));
     } finally {
       setSharing(false);
     }
@@ -70,12 +72,12 @@ export default function FriendsScreen() {
 
   const removeFriend = (friend: FriendSummary) => {
     Alert.alert(
-      "Arkadaşı Kaldır",
-      `${friend.displayName} arkadaş listenden kaldırılsın mı?`,
+      t("friends.removeTitle"),
+      t("friends.removeMessage", { name: friend.displayName }),
       [
-        { text: "İptal", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Kaldır",
+          text: t("common.remove"),
           style: "destructive",
           onPress: async () => {
             if (!token) return;
@@ -86,7 +88,7 @@ export default function FriendsScreen() {
               });
               setFriends((prev) => prev.filter((f) => f.id !== friend.id));
             } catch (err) {
-              Alert.alert("Hata", err instanceof Error ? err.message : "İşlem başarısız.");
+              Alert.alert(t("common.error"), err instanceof Error ? err.message : t("friends.actionFailed"));
             }
           },
         },
@@ -100,17 +102,17 @@ export default function FriendsScreen() {
 
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Geri</Text>
+          <Text style={styles.backText}>← {t("common.back")}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Arkadaşlar</Text>
+        <Text style={styles.headerTitle}>{t("friends.title")}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.profileCard}>
-          <Text style={styles.profileLabel}>Sen</Text>
-          <Text style={styles.profileName}>{user?.displayName ?? "Oyuncu"}</Text>
-          <Text style={styles.profileCode}>Kod: {user?.friendCode ?? "—"}</Text>
+          <Text style={styles.profileLabel}>{t("friends.you")}</Text>
+          <Text style={styles.profileName}>{user?.displayName ?? t("common.player")}</Text>
+          <Text style={styles.profileCode}>{t("friends.code", { code: user?.friendCode ?? "—" })}</Text>
         </View>
 
         <Pressable
@@ -123,22 +125,20 @@ export default function FriendsScreen() {
           ) : (
             <>
               <Feather name="link" size={20} color="#fff" />
-              <Text style={styles.inviteBtnText}>Arkadaş Davet Linki Paylaş</Text>
+              <Text style={styles.inviteBtnText}>{t("friends.shareInviteLink")}</Text>
             </>
           )}
         </Pressable>
 
-        <Text style={styles.sectionTitle}>Arkadaşların ({friends.length})</Text>
+        <Text style={styles.sectionTitle}>{t("friends.friendsCount", { count: friends.length })}</Text>
 
         {loading ? (
           <ActivityIndicator color="#3b82f6" style={{ marginTop: 24 }} />
         ) : friends.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>👋</Text>
-            <Text style={styles.emptyTitle}>Henüz arkadaş yok</Text>
-            <Text style={styles.emptyText}>
-              Davet linkini WhatsApp veya başka bir uygulamayla paylaş. Linki açan kişi otomatik arkadaşın olur.
-            </Text>
+            <Text style={styles.emptyTitle}>{t("friends.emptyTitle")}</Text>
+            <Text style={styles.emptyText}>{t("friends.emptyText")}</Text>
           </View>
         ) : (
           friends.map((friend) => (

@@ -4,17 +4,9 @@ import { eq, and, isNull, sql, desc, gt } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import crypto from "crypto";
 import { generateId, requireAuth, type AuthedRequest } from "../lib/auth";
+import { defaultPlayerName, fixedMatchup, reqT } from "../lib/i18n";
 
 const router = Router();
-
-const FIXED_MATCHUP = {
-  leftTeam: "Takım A",
-  rightTeam: "Takım B",
-  leftColor: "#ef4444",
-  rightColor: "#3b82f6",
-  emoji: "⚔️",
-  winThreshold: 10,
-};
 
 const GAME_INVITE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const APP_SCHEME = "tug-of-war-mobile";
@@ -32,7 +24,7 @@ router.post("/join", async (req, res) => {
   const playerName =
     typeof req.body.name === "string" && req.body.name.trim()
       ? req.body.name.trim()
-      : "Oyuncu";
+      : defaultPlayerName(req);
   const playerToken = req.body.playerToken || generateToken();
 
   try {
@@ -55,7 +47,7 @@ router.post("/join", async (req, res) => {
       return res.json({
         roomId: room.id,
         side,
-        matchup: FIXED_MATCHUP,
+        matchup: fixedMatchup(req),
         opponentName,
         status: room.status,
         playerToken,
@@ -97,7 +89,7 @@ router.post("/join", async (req, res) => {
       return res.json({
         roomId: room.id,
         side: "right",
-        matchup: FIXED_MATCHUP,
+        matchup: fixedMatchup(req),
         opponentName: room.leftPlayerName,
         status: "countdown",
         playerToken,
@@ -127,14 +119,14 @@ router.post("/join", async (req, res) => {
     return res.json({
       roomId,
       side: "left",
-      matchup: FIXED_MATCHUP,
+      matchup: fixedMatchup(req),
       opponentName: null,
       status: "waiting",
       playerToken,
     });
   } catch (err) {
     logger.error({ err }, "Game join error");
-    return res.status(500).json({ message: "Sunucu hatası." });
+    return res.status(500).json({ message: reqT(req, "serverError") });
   }
 });
 
@@ -150,7 +142,7 @@ router.get("/state/:roomId", async (req, res) => {
       .where(eq(gameRoomsTable.id, roomId))
       .limit(1);
     if (rooms.length === 0) {
-      return res.status(404).json({ message: "Oda bulunamadı." });
+      return res.status(404).json({ message: reqT(req, "roomNotFound") });
     }
 
     const room = rooms[0];
@@ -193,12 +185,12 @@ router.get("/state/:roomId", async (req, res) => {
       winner: room.winner,
       countdown,
       opponentName,
-      matchup: FIXED_MATCHUP,
+      matchup: fixedMatchup(req),
       side,
     });
   } catch (err) {
     logger.error({ err }, "Game state error");
-    return res.status(500).json({ message: "Sunucu hatası." });
+    return res.status(500).json({ message: reqT(req, "serverError") });
   }
 });
 
@@ -208,7 +200,7 @@ router.post("/pull/:roomId", async (req, res) => {
   const { playerToken, side } = req.body;
 
   if (!playerToken || !side || (side !== "left" && side !== "right")) {
-    return res.status(400).json({ message: "Geçersiz istek." });
+    return res.status(400).json({ message: reqT(req, "invalidRequest") });
   }
 
   try {
@@ -218,7 +210,7 @@ router.post("/pull/:roomId", async (req, res) => {
       .where(eq(gameRoomsTable.id, roomId))
       .limit(1);
     if (rooms.length === 0) {
-      return res.status(404).json({ message: "Oda bulunamadı." });
+      return res.status(404).json({ message: reqT(req, "roomNotFound") });
     }
 
     const room = rooms[0];
@@ -227,7 +219,7 @@ router.post("/pull/:roomId", async (req, res) => {
     const isLeft = room.leftPlayerToken === playerToken;
     const isRight = room.rightPlayerToken === playerToken;
     if ((side === "left" && !isLeft) || (side === "right" && !isRight)) {
-      return res.status(403).json({ message: "Yetkisiz." });
+      return res.status(403).json({ message: reqT(req, "unauthorized") });
     }
 
     // Auto-transition countdown → playing
@@ -238,19 +230,19 @@ router.post("/pull/:roomId", async (req, res) => {
       if (elapsed >= 5000) {
         status = "playing";
       } else {
-        return res.status(400).json({ message: "Oyun henüz başlamadı." });
+        return res.status(400).json({ message: reqT(req, "gameNotStarted") });
       }
     }
 
     if (status !== "playing") {
-      return res.status(400).json({ message: "Oyun aktif değil." });
+      return res.status(400).json({ message: reqT(req, "gameNotActive") });
     }
 
     if (room.winner) {
-      return res.status(400).json({ message: "Oyun bitti." });
+      return res.status(400).json({ message: reqT(req, "gameEnded") });
     }
 
-    const winThreshold = FIXED_MATCHUP.winThreshold;
+    const winThreshold = fixedMatchup(req).winThreshold;
 
     const delta = side === "left" ? -1 : 1;
     const newOffset = Math.max(
@@ -292,7 +284,7 @@ router.post("/pull/:roomId", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Game pull error");
-    return res.status(500).json({ message: "Sunucu hatası." });
+    return res.status(500).json({ message: reqT(req, "serverError") });
   }
 });
 
@@ -302,7 +294,7 @@ router.post("/leave/:roomId", async (req, res) => {
   const { playerToken } = req.body;
 
   if (!playerToken) {
-    return res.status(400).json({ message: "Geçersiz istek." });
+    return res.status(400).json({ message: reqT(req, "invalidRequest") });
   }
 
   try {
@@ -313,7 +305,7 @@ router.post("/leave/:roomId", async (req, res) => {
       .limit(1);
 
     if (rooms.length === 0) {
-      return res.status(404).json({ message: "Oda bulunamadı." });
+      return res.status(404).json({ message: reqT(req, "roomNotFound") });
     }
 
     const room = rooms[0];
@@ -322,7 +314,7 @@ router.post("/leave/:roomId", async (req, res) => {
     const isLeft = room.leftPlayerToken === playerToken;
     const isRight = room.rightPlayerToken === playerToken;
     if (!isLeft && !isRight) {
-      return res.status(403).json({ message: "Yetkisiz." });
+      return res.status(403).json({ message: reqT(req, "unauthorized") });
     }
 
     // If no opponent yet, just delete the room
@@ -344,7 +336,7 @@ router.post("/leave/:roomId", async (req, res) => {
     return res.json({ deleted: false, winner });
   } catch (err) {
     logger.error({ err }, "Game leave error");
-    return res.status(500).json({ message: "Sunucu hatası." });
+    return res.status(500).json({ message: reqT(req, "serverError") });
   }
 });
 
@@ -353,7 +345,7 @@ router.post("/create-invite", requireAuth, async (req: AuthedRequest, res) => {
   const playerName =
     typeof req.body.name === "string" && req.body.name.trim()
       ? req.body.name.trim().slice(0, 24)
-      : "Oyuncu";
+      : defaultPlayerName(req);
 
   try {
     const userRows = await db
@@ -362,7 +354,7 @@ router.post("/create-invite", requireAuth, async (req: AuthedRequest, res) => {
       .where(eq(usersTable.id, req.userId!))
       .limit(1);
     if (userRows.length === 0) {
-      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+      return res.status(404).json({ message: reqT(req, "userNotFound") });
     }
     const user = userRows[0];
     const displayName = playerName || user.displayName;
@@ -399,17 +391,17 @@ router.post("/create-invite", requireAuth, async (req: AuthedRequest, res) => {
       roomId,
       inviteId,
       url,
-      shareMessage: `${displayName} seni TugUp 1v1'e davet ediyor! ${url}`,
+      shareMessage: reqT(req, "gameShareMessage", { name: displayName, url }),
       expiresAt: expiresAt.toISOString(),
       side: "left",
-      matchup: FIXED_MATCHUP,
+      matchup: fixedMatchup(req),
       opponentName: null,
       status: "waiting",
       playerToken: user.playerToken,
     });
   } catch (err) {
     logger.error({ err }, "Create game invite error");
-    return res.status(500).json({ message: "Sunucu hatası." });
+    return res.status(500).json({ message: reqT(req, "serverError") });
   }
 });
 
@@ -419,7 +411,7 @@ router.post("/join-invite/:inviteId", requireAuth, async (req: AuthedRequest, re
   const playerName =
     typeof req.body.name === "string" && req.body.name.trim()
       ? req.body.name.trim().slice(0, 24)
-      : "Oyuncu";
+      : defaultPlayerName(req);
 
   try {
     const inviteRows = await db
@@ -435,12 +427,12 @@ router.post("/join-invite/:inviteId", requireAuth, async (req: AuthedRequest, re
       .limit(1);
 
     if (inviteRows.length === 0) {
-      return res.status(404).json({ message: "Geçersiz veya süresi dolmuş davet." });
+      return res.status(404).json({ message: reqT(req, "invalidInvite") });
     }
 
     const invite = inviteRows[0];
     if (invite.hostUserId === req.userId) {
-      return res.status(400).json({ message: "Kendi davetine katılamazsın." });
+      return res.status(400).json({ message: reqT(req, "cannotJoinOwnInvite") });
     }
 
     const userRows = await db
@@ -449,7 +441,7 @@ router.post("/join-invite/:inviteId", requireAuth, async (req: AuthedRequest, re
       .where(eq(usersTable.id, req.userId!))
       .limit(1);
     if (userRows.length === 0) {
-      return res.status(404).json({ message: "Kullanıcı bulunamadı." });
+      return res.status(404).json({ message: reqT(req, "userNotFound") });
     }
     const user = userRows[0];
     const displayName = playerName || user.displayName;
@@ -461,7 +453,7 @@ router.post("/join-invite/:inviteId", requireAuth, async (req: AuthedRequest, re
       .limit(1);
 
     if (roomRows.length === 0 || roomRows[0].status !== "waiting" || roomRows[0].rightPlayerToken) {
-      return res.status(409).json({ message: "Oda dolu veya artık mevcut değil." });
+      return res.status(409).json({ message: reqT(req, "roomFullOrGone") });
     }
 
     const room = roomRows[0];
@@ -490,14 +482,14 @@ router.post("/join-invite/:inviteId", requireAuth, async (req: AuthedRequest, re
     return res.json({
       roomId: room.id,
       side: "right",
-      matchup: FIXED_MATCHUP,
+      matchup: fixedMatchup(req),
       opponentName: room.leftPlayerName,
       status: "countdown",
       playerToken: user.playerToken,
     });
   } catch (err) {
     logger.error({ err }, "Join game invite error");
-    return res.status(500).json({ message: "Sunucu hatası." });
+    return res.status(500).json({ message: reqT(req, "serverError") });
   }
 });
 

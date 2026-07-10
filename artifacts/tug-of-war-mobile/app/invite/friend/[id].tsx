@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,13 +20,18 @@ export default function FriendInviteScreen() {
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 16 : insets.top;
   const { token, ensureSession } = useAuth();
+  const { t } = useTranslation();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [message, setMessage] = useState("Davet işleniyor...");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    setMessage(t("invite.friend.processing"));
+  }, [t]);
 
   useEffect(() => {
     if (!id) {
       setStatus("error");
-      setMessage("Geçersiz davet linki.");
+      setMessage(t("invite.friend.invalidLink"));
       return;
     }
 
@@ -39,15 +45,22 @@ export default function FriendInviteScreen() {
         setStatus("success");
         setMessage(
           result.friend
-            ? `${result.friend.displayName} ile arkadaş oldun!`
-            : "Arkadaşlık isteği kabul edildi!",
+            ? t("invite.friend.successWithName", { name: result.friend.displayName })
+            : t("invite.friend.successGeneric"),
         );
       } catch (err) {
         setStatus("error");
-        setMessage(err instanceof Error ? err.message : "Davet kabul edilemedi.");
+        setMessage(err instanceof Error ? err.message : t("invite.friend.acceptFailed"));
       }
     })();
-  }, [id, ensureSession, token]);
+  }, [id, ensureSession, token, t]);
+
+  const title =
+    status === "loading"
+      ? t("invite.friend.titleLoading")
+      : status === "success"
+        ? t("invite.friend.titleSuccess")
+        : t("invite.friend.titleError");
 
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
@@ -58,18 +71,16 @@ export default function FriendInviteScreen() {
         ) : (
           <Text style={styles.emoji}>{status === "success" ? "🎉" : "😕"}</Text>
         )}
-        <Text style={styles.title}>
-          {status === "loading" ? "Davet" : status === "success" ? "Tamam!" : "Hata"}
-        </Text>
+        <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>
 
         {status !== "loading" && (
           <View style={styles.actions}>
             <Pressable style={styles.primaryBtn} onPress={() => router.replace("/friends")}>
-              <Text style={styles.primaryBtnText}>Arkadaşlara Git</Text>
+              <Text style={styles.primaryBtnText}>{t("invite.friend.goToFriends")}</Text>
             </Pressable>
             <Pressable style={styles.secondaryBtn} onPress={() => router.replace("/")}>
-              <Text style={styles.secondaryBtnText}>Ana Menü</Text>
+              <Text style={styles.secondaryBtnText}>{t("common.mainMenu")}</Text>
             </Pressable>
           </View>
         )}
