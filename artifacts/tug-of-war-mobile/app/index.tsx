@@ -98,7 +98,7 @@ export default function HomeScreen() {
         <Pressable style={styles.friendsBtn} onPress={() => router.push("/friends")}>
           <Text style={styles.friendsBtnText}>👥 Arkadaşlar</Text>
         </Pressable>
-        <Text style={styles.footerText}>v0.0.6 · TugUp</Text>
+        <Text style={styles.footerText}>v0.1.0 · TugUp</Text>
       </View>
     </View>
   );
