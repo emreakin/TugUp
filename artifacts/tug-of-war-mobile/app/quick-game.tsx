@@ -16,6 +16,8 @@ import {
   View,
 } from "react-native";
 import { Trans, useTranslation } from "react-i18next";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -25,6 +27,7 @@ const WINDOW_WIDTH = Dimensions.get("window").width;
 const MAX_TRANSLATION = WINDOW_WIDTH / 2 - ROPE_PAD - CHAR_WIDTH / 2;
 const WIN_THRESHOLD = 100;
 const TICK_MS = 50;
+const SWIPE_PIXELS_PER_PULL = 36;
 
 const CHARACTER_IMG = require("@/assets/images/character.png");
 const ROPE_IMG = require("@/assets/images/rope.png");
@@ -360,6 +363,7 @@ export default function QuickGameScreen() {
 
   const driftIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const swipeStepRef = useRef(0);
 
   // ── Animations (mirrors 1v1) ─────────────────────────────────────────────
   // Player (left) stays still; object (right) gets pulled toward center
@@ -685,6 +689,38 @@ export default function QuickGameScreen() {
     playerCharAnim,
     clearIntervals,
   ]);
+
+  const applySwipePulls = useCallback(
+    (count: number) => {
+      for (let i = 0; i < count; i++) {
+        handlePull();
+      }
+    },
+    [handlePull],
+  );
+
+  const swipePullGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(phase === "playing")
+        .activeOffsetX([-15, 0])
+        .onBegin(() => {
+          swipeStepRef.current = 0;
+        })
+        .onUpdate((e) => {
+          if (e.translationX >= 0) return;
+          const steps = Math.floor(-e.translationX / SWIPE_PIXELS_PER_PULL);
+          if (steps > swipeStepRef.current) {
+            const delta = steps - swipeStepRef.current;
+            swipeStepRef.current = steps;
+            runOnJS(applySwipePulls)(delta);
+          }
+        })
+        .onFinalize(() => {
+          swipeStepRef.current = 0;
+        }),
+    [phase, applySwipePulls],
+  );
 
   // ── Joker: Reklam izleyerek joker kazan ──────────────────────────────────
   const handleEarnJoker = useCallback(async () => {
@@ -1018,7 +1054,8 @@ export default function QuickGameScreen() {
       <StatusBar barStyle="light-content" />
 
       {/* Top + rope wrapper — takes all space above the fixed bottom controls */}
-      <View style={styles.gameTop}>
+      <GestureDetector gesture={swipePullGesture}>
+        <View style={styles.gameTop}>
         {/* Header — same as 1v1 */}
         <View style={styles.header}>
           <Pressable
@@ -1208,6 +1245,7 @@ export default function QuickGameScreen() {
         </View>
       </View>
       </View>{/* end gameTop */}
+      </GestureDetector>
 
       {/* Bottom section — jokers + pull button, always visible */}
       <View style={styles.gameBottom}>
