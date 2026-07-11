@@ -28,22 +28,23 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     hydrateLanguagePreference()
       .then(setPreferenceState)
+      .catch(() => setPreferenceState("system"))
       .finally(() => setReady(true));
   }, []);
 
   const setPreference = useCallback(async (next: LanguagePreference) => {
-    await setStoredLanguagePreference(next);
-    setPreferenceState(next);
+    try {
+      await setStoredLanguagePreference(next);
+      setPreferenceState(next);
+    } catch {
+      // Keep UI responsive even if persistence fails
+    }
   }, []);
 
   const value = useMemo(
     () => ({ ready, preference, setPreference }),
     [ready, preference, setPreference],
   );
-
-  if (!ready) {
-    return null;
-  }
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }

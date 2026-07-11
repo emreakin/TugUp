@@ -1,7 +1,7 @@
+import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { router } from "expo-router";
 import React from "react";
 import {
-  Dimensions,
   Image,
   Platform,
   Pressable,
@@ -12,8 +12,6 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const { width } = Dimensions.get("window");
 
 const MODE_CONFIG = [
   {
@@ -65,6 +63,10 @@ export default function HomeScreen() {
     >
       <StatusBar barStyle="light-content" />
 
+      <View style={[styles.topBar, { top: (Platform.OS === "web" ? 16 : insets.top) + 8 }]}>
+        <LanguageSwitch />
+      </View>
+
       {/* Logo area */}
       <View style={styles.header}>
         <Image
@@ -97,14 +99,9 @@ export default function HomeScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <View style={styles.footerActions}>
-          <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
-            <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
-          </Pressable>
-          <Pressable style={styles.footerBtn} onPress={() => router.push("/settings")}>
-            <Text style={styles.footerBtnText}>⚙️ {t("home.settings")}</Text>
-          </Pressable>
-        </View>
+        <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
+          <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
+        </Pressable>
         <Text style={styles.footerText}>v0.1.0 · TugUp</Text>
       </View>
     </View>
@@ -119,9 +116,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 28,
   },
+  topBar: {
+    position: "absolute",
+    right: 20,
+    zIndex: 10,
+  },
   header: {
     alignItems: "center",
-    marginTop: 48,
+    marginTop: 72,
   },
   logo: {
     width: 140,
@@ -186,10 +188,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     alignItems: "center",
     gap: 12,
-  },
-  footerActions: {
-    flexDirection: "row",
-    gap: 10,
   },
   footerBtn: {
     backgroundColor: "#1e293b",

@@ -35,7 +35,6 @@ function RootLayoutNav() {
       <Stack.Screen name="online" />
       <Stack.Screen name="1v1" />
       <Stack.Screen name="friends" />
-      <Stack.Screen name="settings" />
       <Stack.Screen name="invite/friend/[id]" />
       <Stack.Screen name="invite/game/[id]" />
       <Stack.Screen name="game" />

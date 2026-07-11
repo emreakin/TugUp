@@ -11,19 +11,31 @@ export const LANGUAGE_STORAGE_KEY = "@tugup/language";
 export type LanguagePreference = "system" | "tr" | "en";
 export type AppLanguage = "tr" | "en";
 
+function getDeviceLanguageCode(): string | undefined {
+  try {
+    return Localization.getLocales()[0]?.languageCode ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function resolveLanguage(preference: LanguagePreference): AppLanguage {
   if (preference === "tr" || preference === "en") {
     return preference;
   }
 
-  const code = Localization.getLocales()[0]?.languageCode;
+  const code = getDeviceLanguageCode();
   return code === "tr" ? "tr" : "en";
 }
 
 export async function getStoredLanguagePreference(): Promise<LanguagePreference> {
-  const value = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
-  if (value === "system" || value === "tr" || value === "en") {
-    return value;
+  try {
+    const value = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (value === "system" || value === "tr" || value === "en") {
+      return value;
+    }
+  } catch {
+    // Ignore storage errors on startup
   }
   return "system";
 }
@@ -47,13 +59,18 @@ void i18n.use(initReactI18next).init({
 });
 
 export async function hydrateLanguagePreference(): Promise<LanguagePreference> {
-  const preference = await getStoredLanguagePreference();
-  await i18n.changeLanguage(resolveLanguage(preference));
-  return preference;
+  try {
+    const preference = await getStoredLanguagePreference();
+    await i18n.changeLanguage(resolveLanguage(preference));
+    return preference;
+  } catch {
+    await i18n.changeLanguage("en");
+    return "system";
+  }
 }
 
 export function getAcceptLanguage(): string {
-  const lng = i18n.language;
+  const lng = i18n.language ?? "en";
   return lng === "tr" || lng.startsWith("tr-") ? "tr" : "en";
 }
 

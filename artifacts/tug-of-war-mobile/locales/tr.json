@@ -2,7 +2,7 @@
   "home": {
     "tagline": "Dünyanın en büyük gücünü belirle!",
     "modes": {
-      "quickGame": "Quick Game",
+      "quickGame": "Hızlı Oyun",
       "oneVsOne": "1v1",
       "online": "Online"
     },
@@ -137,7 +137,7 @@
     }
   },
   "quickGame": {
-    "title": "⚡ Quick Game",
+    "title": "⚡ Hızlı Oyun",
     "subtitle": "Bir seviye seç ve çekişi başlat!",
     "loading": "⏳ Yükleniyor…",
     "earnJoker": "🎬 Joker Kazan (+1)",
@@ -169,7 +169,7 @@
     "allComplete": "🎉 Tüm Seviyeleri Bitirdin!",
     "levelsBtn": "Seviyeler",
     "tutorial": {
-      "title": "Quick Game'e Hoş Geldin!",
+      "title": "Hızlı Oyun'a Hoş Geldin!",
       "step1": "Bir seviye seç ve ekrandaki <bold>“ÇEK!”</bold> butonuna hızlıca basarak objeyi kendi tarafına çek.",
       "step2": "Zaman dolmadan objeyi kendi çizgine ulaştırmalısın. Kalan süre ne kadar fazlaysa rekorun o kadar iyi!",
       "step3": "Objeyi çektiğinde onu zıt yönde iten bir kuvvet var. Her 3-5 saniyede 10 birim geri gidebilir!",
