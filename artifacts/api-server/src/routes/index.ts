@@ -6,12 +6,14 @@ import matchupsRouter from "./matchups";
 import gameRouter from "./game";
 import authRouter from "./auth";
 import friendsRouter from "./friends";
+import coinsRouter from "./coins";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/auth", authRouter);
 router.use("/friends", friendsRouter);
+router.use("/coins", coinsRouter);
 router.use("/matchups", matchupsRouter);
 router.use("/votes", votesRouter);
 router.use("/suggestions", suggestionsRouter);

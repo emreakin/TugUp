@@ -7,7 +7,11 @@
       "online": "Online"
     },
     "friends": "Friends",
-    "settings": "Settings"
+    "settings": "Settings",
+    "coins": "{{count}} coins",
+    "dailyRewardTitle": "Daily Reward!",
+    "dailyRewardMessage": "Day {{day}}: you earned +{{reward}} coins",
+    "dailyRewardOk": "Awesome"
   },
   "settings": {
     "title": "Settings",

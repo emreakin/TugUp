@@ -1,9 +1,12 @@
 import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { useAuth } from "@/contexts/AuthContext";
 import { FRIENDS_ENABLED } from "@/lib/features";
-import { router } from "expo-router";
-import React from "react";
+import { apiFetch, type DailyClaimResult } from "@/lib/api";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Image,
+  Modal,
   Platform,
   Pressable,
   StatusBar,
@@ -41,6 +44,48 @@ const MODE_CONFIG = [
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const { ensureSession, token } = useAuth();
+  const [coinBalance, setCoinBalance] = useState<number | null>(null);
+  const [dailyReward, setDailyReward] = useState<{
+    reward: number;
+    streak: number;
+  } | null>(null);
+  const claimingRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+
+      (async () => {
+        if (claimingRef.current) return;
+        claimingRef.current = true;
+        try {
+          const session = await ensureSession();
+          const authToken = session.token || token;
+          if (!authToken || cancelled) return;
+
+          const result = await apiFetch<DailyClaimResult>("/api/coins/daily-claim", {
+            method: "POST",
+            token: authToken,
+          });
+          if (cancelled) return;
+
+          setCoinBalance(result.balance);
+          if (result.claimed) {
+            setDailyReward({ reward: result.reward, streak: result.streak });
+          }
+        } catch {
+          // Balance stays null; home still usable offline-ish
+        } finally {
+          claimingRef.current = false;
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [ensureSession, token]),
+  );
 
   const handlePress = (key: (typeof MODE_CONFIG)[number]["key"]) => {
     if (key === "online") {
@@ -51,6 +96,8 @@ export default function HomeScreen() {
       router.push("/quick-game");
     }
   };
+
+  const topPad = (Platform.OS === "web" ? 16 : insets.top) + 8;
 
   return (
     <View
@@ -64,7 +111,13 @@ export default function HomeScreen() {
     >
       <StatusBar barStyle="light-content" />
 
-      <View style={[styles.topBar, { top: (Platform.OS === "web" ? 16 : insets.top) + 8 }]}>
+      <View style={[styles.topBar, { top: topPad }]}>
+        <View style={styles.coinBadge}>
+          <Text style={styles.coinEmoji}>🪙</Text>
+          <Text style={styles.coinText}>
+            {coinBalance == null ? "—" : t("home.coins", { count: coinBalance })}
+          </Text>
+        </View>
         <LanguageSwitch />
       </View>
 
@@ -107,6 +160,29 @@ export default function HomeScreen() {
         ) : null}
         <Text style={styles.footerText}>v0.1.0 · TugUp</Text>
       </View>
+
+      <Modal visible={dailyReward != null} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalEmoji}>🪙</Text>
+            <Text style={styles.modalTitle}>{t("home.dailyRewardTitle")}</Text>
+            <Text style={styles.modalMessage}>
+              {dailyReward
+                ? t("home.dailyRewardMessage", {
+                    day: dailyReward.streak,
+                    reward: dailyReward.reward,
+                  })
+                : ""}
+            </Text>
+            <Pressable
+              style={styles.modalBtn}
+              onPress={() => setDailyReward(null)}
+            >
+              <Text style={styles.modalBtnText}>{t("home.dailyRewardOk")}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -121,8 +197,31 @@ const styles = StyleSheet.create({
   },
   topBar: {
     position: "absolute",
+    left: 20,
     right: 20,
     zIndex: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  coinBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#1e293b",
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  coinEmoji: {
+    fontSize: 14,
+  },
+  coinText: {
+    color: "#fbbf24",
+    fontFamily: "Inter_700Bold",
+    fontSize: 13,
   },
   header: {
     alignItems: "center",
@@ -210,5 +309,51 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: "#475569",
     letterSpacing: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.72)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 340,
+    backgroundColor: "#1e293b",
+    borderRadius: 20,
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  modalEmoji: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: "#fbbf24",
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#cbd5e1",
+    textAlign: "center",
+    marginBottom: 22,
+  },
+  modalBtn: {
+    backgroundColor: "#fbbf24",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+  },
+  modalBtnText: {
+    color: "#0f172a",
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
   },
 });

@@ -204,3 +204,37 @@ export const dailyAdRewardsTable = pgTable(
 );
 
 export type DailyAdReward = typeof dailyAdRewardsTable.$inferSelect;
+
+// ── Coins & Daily Login ────────────────────────────────────────────────────
+/** Per-user coin wallet + consecutive daily-login streak */
+export const userWalletsTable = pgTable("user_wallets", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  balance: integer("balance").notNull().default(0),
+  /** Consecutive daily claims (1 = first day reward, 5+ = max 100 coin) */
+  dailyStreak: integer("daily_streak").notNull().default(0),
+  /** UTC calendar date (YYYY-MM-DD) of last successful daily claim */
+  lastDailyClaimDate: date("last_daily_claim_date"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type UserWallet = typeof userWalletsTable.$inferSelect;
+
+/** Append-only ledger for earn/spend (audit + future shop) */
+export const coinTransactionsTable = pgTable(
+  "coin_transactions",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(), // positive = earn, negative = spend
+    reason: text("reason").notNull(), // daily_login | purchase | … 
+    balanceAfter: integer("balance_after").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("coin_transactions_user_idx").on(t.userId, t.createdAt)],
+);
+
+export type CoinTransaction = typeof coinTransactionsTable.$inferSelect;

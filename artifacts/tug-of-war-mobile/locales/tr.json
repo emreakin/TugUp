@@ -7,7 +7,11 @@
       "online": "Online"
     },
     "friends": "Arkadaşlar",
-    "settings": "Ayarlar"
+    "settings": "Ayarlar",
+    "coins": "{{count}} coin",
+    "dailyRewardTitle": "Günlük Ödül!",
+    "dailyRewardMessage": "Gün {{day}}: +{{reward}} coin kazandın",
+    "dailyRewardOk": "Harika"
   },
   "settings": {
     "title": "Ayarlar",

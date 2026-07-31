@@ -49,6 +49,30 @@ export interface FriendSummary {
   friendCode: string;
 }
 
+export interface CoinBalance {
+  balance: number;
+  dailyStreak: number;
+  lastDailyClaimDate: string | null;
+  canClaimToday: boolean;
+  nextReward: number;
+  nextStreak: number;
+}
+
+export type DailyClaimResult =
+  | {
+      claimed: true;
+      reward: number;
+      streak: number;
+      balance: number;
+    }
+  | {
+      claimed: false;
+      reason: "already_claimed";
+      streak: number;
+      balance: number;
+      nextReward: number;
+    };
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit & { token?: string | null } = {},
