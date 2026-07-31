@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, getApiHeaders, getApiUrl } from "@/lib/api";
+import { FRIENDS_ENABLED } from "@/lib/features";
 
 // ─── Constants ────────────────────────────────────────────────────
 
@@ -121,7 +122,7 @@ export default function OneVsOneScreen() {
   }>();
 
   // ── Phase & matchmaking state ───────────────────────────────────────
-  const [phase, setPhase] = useState<Phase>("mode_select");
+  const [phase, setPhase] = useState<Phase>(FRIENDS_ENABLED ? "mode_select" : "name_input");
   const [matchMode, setMatchMode] = useState<MatchMode>("random");
   const [gameInviteShare, setGameInviteShare] = useState<string | null>(null);
   const [matchup, setMatchup] = useState<MatchupInfo | null>(null);
@@ -310,6 +311,7 @@ export default function OneVsOneScreen() {
 
   // ── Join from game invite deep link ───────────────────────────────
   useEffect(() => {
+    if (!FRIENDS_ENABLED) return;
     const roomId = params.joinRoomId;
     const playerToken = params.joinPlayerToken;
     if (!roomId || !playerToken) return;
@@ -354,7 +356,7 @@ export default function OneVsOneScreen() {
       const tokenToUse = session.playerToken ?? authPlayerToken;
       let token = tokenToUse ?? (await AsyncStorage.getItem("player_token"));
 
-      if (matchMode === "invite") {
+      if (FRIENDS_ENABLED && matchMode === "invite") {
         const data = await apiFetch<{
           roomId: string;
           side: "left" | "right";
@@ -546,16 +548,18 @@ export default function OneVsOneScreen() {
             </View>
           </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [styles.modeCard, styles.modeCardInvite, pressed && styles.modeCardPressed]}
-            onPress={() => { setMatchMode("invite"); setPhase("name_input"); }}
-          >
-            <Text style={styles.modeCardEmoji}>🔗</Text>
-            <View style={styles.modeCardText}>
-              <Text style={styles.modeCardTitle}>{t("oneVsOne.inviteFriendTitle")}</Text>
-              <Text style={styles.modeCardDesc}>{t("oneVsOne.inviteFriendDesc")}</Text>
-            </View>
-          </Pressable>
+          {FRIENDS_ENABLED ? (
+            <Pressable
+              style={({ pressed }) => [styles.modeCard, styles.modeCardInvite, pressed && styles.modeCardPressed]}
+              onPress={() => { setMatchMode("invite"); setPhase("name_input"); }}
+            >
+              <Text style={styles.modeCardEmoji}>🔗</Text>
+              <View style={styles.modeCardText}>
+                <Text style={styles.modeCardTitle}>{t("oneVsOne.inviteFriendTitle")}</Text>
+                <Text style={styles.modeCardDesc}>{t("oneVsOne.inviteFriendDesc")}</Text>
+              </View>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     );
@@ -567,7 +571,10 @@ export default function OneVsOneScreen() {
       <View style={[styles.container, { paddingTop: topInset, paddingBottom: bottomInset }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.header}>
-          <Pressable onPress={() => setPhase("mode_select")} style={styles.backBtn}>
+          <Pressable
+            onPress={() => (FRIENDS_ENABLED ? setPhase("mode_select") : router.back())}
+            style={styles.backBtn}
+          >
             <Text style={styles.backText}>← {t("common.back")}</Text>
           </Pressable>
           <Text style={styles.headerTitle}>{t("oneVsOne.title")}</Text>

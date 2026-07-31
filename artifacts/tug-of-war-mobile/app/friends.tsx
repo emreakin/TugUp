@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, type FriendSummary } from "@/lib/api";
+import { FRIENDS_ENABLED } from "@/lib/features";
 
 export default function FriendsScreen() {
   const insets = useSafeAreaInsets();
@@ -29,6 +30,16 @@ export default function FriendsScreen() {
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+
+  useEffect(() => {
+    if (!FRIENDS_ENABLED) {
+      router.replace("/");
+    }
+  }, []);
+
+  if (!FRIENDS_ENABLED) {
+    return null;
+  }
 
   const loadFriends = useCallback(async () => {
     if (!token) return;

@@ -28,6 +28,10 @@ const MAX_TRANSLATION = WINDOW_WIDTH / 2 - ROPE_PAD - CHAR_WIDTH / 2;
 const WIN_THRESHOLD = 100;
 const TICK_MS = 50;
 const SWIPE_PIXELS_PER_PULL = 36;
+const TURBO_DURATION_MS = 3000;
+const TURBO_MULTIPLIER = 2;
+const MAX_JOKERS = 3;
+const MAX_BOMB_PER_ROUND = 2;
 
 const CHARACTER_IMG = require("@/assets/images/character.png");
 const ROPE_IMG = require("@/assets/images/rope.png");
@@ -345,6 +349,11 @@ export default function QuickGameScreen() {
   // Global joker pool — persisted across sessions
   const [timeJokersLeft, setTimeJokersLeft] = useState(3);
   const [bombJokersLeft, setBombJokersLeft] = useState(3);
+  const [turboJokersLeft, setTurboJokersLeft] = useState(3);
+  // Turbo active countdown (seconds remaining while 2x pull is on)
+  const [turboSecondsLeft, setTurboSecondsLeft] = useState(0);
+  // +25% joker uses in the current round (max MAX_BOMB_PER_ROUND)
+  const [bombUsesThisRound, setBombUsesThisRound] = useState(0);
   // Loading state for ad-earn button
   const [adLoading, setAdLoading] = useState(false);
   // Joker picker modal (shown after rewarded ad)
@@ -363,6 +372,8 @@ export default function QuickGameScreen() {
 
   const driftIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const turboTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const turboUntilRef = useRef(0);
   const swipeStepRef = useRef(0);
 
   // ── Animations (mirrors 1v1) ─────────────────────────────────────────────
@@ -398,6 +409,7 @@ export default function QuickGameScreen() {
         if (typeof saved.unlockedUpTo === "number") setUnlockedUpTo(saved.unlockedUpTo);
         if (typeof saved.timeJokersLeft === "number") setTimeJokersLeft(saved.timeJokersLeft);
         if (typeof saved.bombJokersLeft === "number") setBombJokersLeft(saved.bombJokersLeft);
+        if (typeof saved.turboJokersLeft === "number") setTurboJokersLeft(saved.turboJokersLeft);
       })
       .catch(() => {});
     AsyncStorage.getItem(BEST_TIMES_KEY)
@@ -415,10 +427,15 @@ export default function QuickGameScreen() {
   }, [PROGRESS_KEY, BEST_TIMES_KEY, TUTORIAL_SHOWN_KEY]);
 
   const saveProgress = useCallback(
-    (unlockedUpToVal: number, timeLeft: number, bombLeft: number) => {
+    (unlockedUpToVal: number, timeLeft: number, bombLeft: number, turboLeft: number) => {
       AsyncStorage.setItem(
         PROGRESS_KEY,
-        JSON.stringify({ unlockedUpTo: unlockedUpToVal, timeJokersLeft: timeLeft, bombJokersLeft: bombLeft }),
+        JSON.stringify({
+          unlockedUpTo: unlockedUpToVal,
+          timeJokersLeft: timeLeft,
+          bombJokersLeft: bombLeft,
+          turboJokersLeft: turboLeft,
+        }),
       ).catch(() => {});
     },
     [PROGRESS_KEY],
@@ -538,6 +555,12 @@ export default function QuickGameScreen() {
       clearTimeout(celebrationTimeoutRef.current);
       celebrationTimeoutRef.current = null;
     }
+    if (turboTimerRef.current) {
+      clearInterval(turboTimerRef.current);
+      turboTimerRef.current = null;
+    }
+    turboUntilRef.current = 0;
+    setTurboSecondsLeft(0);
   }, []);
 
   useEffect(() => () => clearIntervals(), [clearIntervals]);
@@ -576,6 +599,7 @@ export default function QuickGameScreen() {
       setTimeLeft(level.timeLimit);
       setCurrentLevelId(level.id);
       setIsNewRecord(false);
+      setBombUsesThisRound(0);
       setPhase("playing");
 
       // Reset animations
@@ -621,9 +645,10 @@ export default function QuickGameScreen() {
   const handlePull = useCallback(() => {
     if (phase !== "playing") return;
 
+    const multiplier = Date.now() < turboUntilRef.current ? TURBO_MULTIPLIER : 1;
     positionRef.current = Math.min(
       WIN_THRESHOLD,
-      positionRef.current + currentLevel.unitPerTap,
+      positionRef.current + currentLevel.unitPerTap * multiplier,
     );
     setPosition(positionRef.current);
     updateVisuals(positionRef.current);
@@ -662,7 +687,7 @@ export default function QuickGameScreen() {
       clearIntervals();
       const nextUnlocked = Math.min(LEVEL_CONFIGS.length, Math.max(unlockedUpTo, currentLevel.id + 1));
       setUnlockedUpTo(nextUnlocked);
-      saveProgress(nextUnlocked, timeJokersLeft, bombJokersLeft);
+      saveProgress(nextUnlocked, timeJokersLeft, bombJokersLeft, turboJokersLeft);
       // Best time: remaining seconds = timeLeftRef (includes any joker bonus)
       const remaining = timeLeftRef.current;
       const prevBest = bestTimes[currentLevel.id];
@@ -682,6 +707,7 @@ export default function QuickGameScreen() {
     unlockedUpTo,
     timeJokersLeft,
     bombJokersLeft,
+    turboJokersLeft,
     bestTimes,
     saveProgress,
     updateVisuals,
@@ -724,10 +750,10 @@ export default function QuickGameScreen() {
 
   // ── Joker: Reklam izleyerek joker kazan ──────────────────────────────────
   const handleEarnJoker = useCallback(async () => {
-    const maxJokers = 3;
-    const canAddTime = timeJokersLeft < maxJokers;
-    const canAddBomb = bombJokersLeft < maxJokers;
-    if (!canAddTime && !canAddBomb) {
+    const canAddTime = timeJokersLeft < MAX_JOKERS;
+    const canAddBomb = bombJokersLeft < MAX_JOKERS;
+    const canAddTurbo = turboJokersLeft < MAX_JOKERS;
+    if (!canAddTime && !canAddBomb && !canAddTurbo) {
       Alert.alert(t("quickGame.jokerFullTitle"), t("quickGame.jokerFullMessage"));
       return;
     }
@@ -740,14 +766,20 @@ export default function QuickGameScreen() {
         // Web: auto-pick first available
         if (canAddTime) {
           setTimeJokersLeft((prev) => {
-            const next = Math.min(maxJokers, prev + 1);
-            saveProgress(unlockedUpTo, next, bombJokersLeft);
+            const next = Math.min(MAX_JOKERS, prev + 1);
+            saveProgress(unlockedUpTo, next, bombJokersLeft, turboJokersLeft);
+            return next;
+          });
+        } else if (canAddBomb) {
+          setBombJokersLeft((prev) => {
+            const next = Math.min(MAX_JOKERS, prev + 1);
+            saveProgress(unlockedUpTo, timeJokersLeft, next, turboJokersLeft);
             return next;
           });
         } else {
-          setBombJokersLeft((prev) => {
-            const next = Math.min(maxJokers, prev + 1);
-            saveProgress(unlockedUpTo, timeJokersLeft, next);
+          setTurboJokersLeft((prev) => {
+            const next = Math.min(MAX_JOKERS, prev + 1);
+            saveProgress(unlockedUpTo, timeJokersLeft, bombJokersLeft, next);
             return next;
           });
         }
@@ -778,7 +810,7 @@ export default function QuickGameScreen() {
       // Web preview — skip ad
       onReward();
     }
-  }, [unlockedUpTo, timeJokersLeft, bombJokersLeft, saveProgress, t]);
+  }, [unlockedUpTo, timeJokersLeft, bombJokersLeft, turboJokersLeft, saveProgress, t]);
 
   // ── Joker: Zaman Jokeri (+2 saniye) ──────────────────────────────────────
   const handleTimeJoker = useCallback(() => {
@@ -787,19 +819,61 @@ export default function QuickGameScreen() {
     setTimeLeft(timeLeftRef.current);
     const newCount = timeJokersLeft - 1;
     setTimeJokersLeft(newCount);
-    saveProgress(unlockedUpTo, newCount, bombJokersLeft);
-  }, [timeJokersLeft, bombJokersLeft, unlockedUpTo, phase, saveProgress]);
+    saveProgress(unlockedUpTo, newCount, bombJokersLeft, turboJokersLeft);
+  }, [timeJokersLeft, bombJokersLeft, turboJokersLeft, unlockedUpTo, phase, saveProgress]);
 
   // ── Joker: Bomba Jokeri (%25 öne) ───────────────────────────────────────
   const handleBombJoker = useCallback(() => {
     if (bombJokersLeft <= 0 || phase !== "playing") return;
+    if (currentLevel.id <= 7) return;
+    if (bombUsesThisRound >= MAX_BOMB_PER_ROUND) return;
     positionRef.current = Math.min(WIN_THRESHOLD, positionRef.current + 25);
     setPosition(positionRef.current);
     updateVisuals(positionRef.current);
     const newCount = bombJokersLeft - 1;
     setBombJokersLeft(newCount);
-    saveProgress(unlockedUpTo, timeJokersLeft, newCount);
-  }, [bombJokersLeft, timeJokersLeft, unlockedUpTo, phase, updateVisuals, saveProgress]);
+    setBombUsesThisRound((prev) => prev + 1);
+    saveProgress(unlockedUpTo, timeJokersLeft, newCount, turboJokersLeft);
+  }, [
+    bombJokersLeft,
+    bombUsesThisRound,
+    timeJokersLeft,
+    turboJokersLeft,
+    unlockedUpTo,
+    phase,
+    currentLevel.id,
+    updateVisuals,
+    saveProgress,
+  ]);
+
+  // ── Joker: Turbo Güç (3 sn ×2 çekme) ─────────────────────────────────────
+  const handleTurboJoker = useCallback(() => {
+    if (turboJokersLeft <= 0 || phase !== "playing") return;
+    if (currentLevel.id <= 4) return;
+    if (Date.now() < turboUntilRef.current) return;
+
+    const newCount = turboJokersLeft - 1;
+    setTurboJokersLeft(newCount);
+    saveProgress(unlockedUpTo, timeJokersLeft, bombJokersLeft, newCount);
+
+    turboUntilRef.current = Date.now() + TURBO_DURATION_MS;
+    setTurboSecondsLeft(Math.ceil(TURBO_DURATION_MS / 1000));
+
+    if (turboTimerRef.current) clearInterval(turboTimerRef.current);
+    turboTimerRef.current = setInterval(() => {
+      const remainingMs = turboUntilRef.current - Date.now();
+      if (remainingMs <= 0) {
+        if (turboTimerRef.current) {
+          clearInterval(turboTimerRef.current);
+          turboTimerRef.current = null;
+        }
+        turboUntilRef.current = 0;
+        setTurboSecondsLeft(0);
+        return;
+      }
+      setTurboSecondsLeft(Math.ceil(remainingMs / 1000));
+    }, 200);
+  }, [turboJokersLeft, timeJokersLeft, bombJokersLeft, unlockedUpTo, phase, saveProgress, currentLevel.id]);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const remaining = Math.max(0, Math.ceil(WIN_THRESHOLD - position));
@@ -835,17 +909,28 @@ export default function QuickGameScreen() {
             <Text style={styles.jokerStockText}>⏳ {timeJokersLeft}/3</Text>
           </View>
           <View style={styles.jokerStockPill}>
+            <Text style={styles.jokerStockText}>⚡ {turboJokersLeft}/3</Text>
+          </View>
+          <View style={styles.jokerStockPill}>
             <Text style={styles.jokerStockText}>💥 {bombJokersLeft}/3</Text>
           </View>
           <Pressable
             style={[
               styles.jokerStockPill,
               styles.jokerStockAdBtn,
-              timeJokersLeft >= 3 && bombJokersLeft >= 3 && styles.jokerStockAdBtnDisabled,
+              timeJokersLeft >= MAX_JOKERS &&
+                bombJokersLeft >= MAX_JOKERS &&
+                turboJokersLeft >= MAX_JOKERS &&
+                styles.jokerStockAdBtnDisabled,
               adLoading && styles.jokerStockAdBtnLoading,
             ]}
             onPress={handleEarnJoker}
-            disabled={(timeJokersLeft >= 3 && bombJokersLeft >= 3) || adLoading}
+            disabled={
+              (timeJokersLeft >= MAX_JOKERS &&
+                bombJokersLeft >= MAX_JOKERS &&
+                turboJokersLeft >= MAX_JOKERS) ||
+              adLoading
+            }
           >
             <Text style={styles.jokerStockAdText}>
               {adLoading ? t("quickGame.loading") : t("quickGame.earnJoker")}
@@ -923,13 +1008,13 @@ export default function QuickGameScreen() {
               <Pressable
                 style={[
                   styles.jokerPickerBtn,
-                  timeJokersLeft >= 3 && styles.jokerPickerBtnDisabled,
+                  timeJokersLeft >= MAX_JOKERS && styles.jokerPickerBtnDisabled,
                 ]}
-                disabled={timeJokersLeft >= 3}
+                disabled={timeJokersLeft >= MAX_JOKERS}
                 onPress={() => {
                   setTimeJokersLeft((prev) => {
-                    const next = Math.min(3, prev + 1);
-                    saveProgress(unlockedUpTo, next, bombJokersLeft);
+                    const next = Math.min(MAX_JOKERS, prev + 1);
+                    saveProgress(unlockedUpTo, next, bombJokersLeft, turboJokersLeft);
                     return next;
                   });
                   setJokerPickerVisible(false);
@@ -937,22 +1022,45 @@ export default function QuickGameScreen() {
               >
                 <Text style={styles.jokerPickerBtnText}>
                   {t("quickGame.timeJokerPicker")}
-                  {timeJokersLeft >= 3
+                  {timeJokersLeft >= MAX_JOKERS
                     ? ` ${t("quickGame.full")}`
-                    : ` (${timeJokersLeft} → ${Math.min(3, timeJokersLeft + 1)})`}
+                    : ` (${timeJokersLeft} → ${Math.min(MAX_JOKERS, timeJokersLeft + 1)})`}
                 </Text>
               </Pressable>
 
               <Pressable
                 style={[
                   styles.jokerPickerBtn,
-                  bombJokersLeft >= 3 && styles.jokerPickerBtnDisabled,
+                  turboJokersLeft >= MAX_JOKERS && styles.jokerPickerBtnDisabled,
                 ]}
-                disabled={bombJokersLeft >= 3}
+                disabled={turboJokersLeft >= MAX_JOKERS}
+                onPress={() => {
+                  setTurboJokersLeft((prev) => {
+                    const next = Math.min(MAX_JOKERS, prev + 1);
+                    saveProgress(unlockedUpTo, timeJokersLeft, bombJokersLeft, next);
+                    return next;
+                  });
+                  setJokerPickerVisible(false);
+                }}
+              >
+                <Text style={styles.jokerPickerBtnText}>
+                  {t("quickGame.turboJokerPicker")}
+                  {turboJokersLeft >= MAX_JOKERS
+                    ? ` ${t("quickGame.full")}`
+                    : ` (${turboJokersLeft} → ${Math.min(MAX_JOKERS, turboJokersLeft + 1)})`}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.jokerPickerBtn,
+                  bombJokersLeft >= MAX_JOKERS && styles.jokerPickerBtnDisabled,
+                ]}
+                disabled={bombJokersLeft >= MAX_JOKERS}
                 onPress={() => {
                   setBombJokersLeft((prev) => {
-                    const next = Math.min(3, prev + 1);
-                    saveProgress(unlockedUpTo, timeJokersLeft, next);
+                    const next = Math.min(MAX_JOKERS, prev + 1);
+                    saveProgress(unlockedUpTo, timeJokersLeft, next, turboJokersLeft);
                     return next;
                   });
                   setJokerPickerVisible(false);
@@ -960,9 +1068,9 @@ export default function QuickGameScreen() {
               >
                 <Text style={styles.jokerPickerBtnText}>
                   {t("quickGame.bombJokerPicker")}
-                  {bombJokersLeft >= 3
+                  {bombJokersLeft >= MAX_JOKERS
                     ? ` ${t("quickGame.full")}`
-                    : ` (${bombJokersLeft} → ${Math.min(3, bombJokersLeft + 1)})`}
+                    : ` (${bombJokersLeft} → ${Math.min(MAX_JOKERS, bombJokersLeft + 1)})`}
                 </Text>
               </Pressable>
 
@@ -1014,6 +1122,7 @@ export default function QuickGameScreen() {
                   components={{
                     time: <Text style={{ fontFamily: "Inter_700Bold", color: "#3b82f6" }} />,
                     bomb: <Text style={{ fontFamily: "Inter_700Bold", color: "#f59e0b" }} />,
+                    turbo: <Text style={{ fontFamily: "Inter_700Bold", color: "#a855f7" }} />,
                   }}
                 />
               </View>
@@ -1044,9 +1153,14 @@ export default function QuickGameScreen() {
   const nextLevel = levels.find((l) => l.id === currentLevel.id + 1);
 
   // ── In-game joker state ───────────────────────────────────────────────────
-  const bombLocked = currentLevel.id <= 4;
+  const bombLocked = currentLevel.id <= 7;
+  const turboLocked = currentLevel.id <= 4;
   const timeJokerDisabled = timeJokersLeft <= 0;
-  const bombJokerDisabled = bombJokersLeft <= 0 || bombLocked;
+  const bombRoundLimitReached = bombUsesThisRound >= MAX_BOMB_PER_ROUND;
+  const bombJokerDisabled =
+    bombJokersLeft <= 0 || bombLocked || bombRoundLimitReached;
+  const turboActive = turboSecondsLeft > 0;
+  const turboJokerDisabled = turboJokersLeft <= 0 || turboActive || turboLocked;
 
   // ── PLAYING (+ win/lose as modal overlay) ─────────────────────────────────
   return (
@@ -1256,7 +1370,7 @@ export default function QuickGameScreen() {
             <Pressable
               style={[
                 styles.jokerBtn,
-                { width: "48%" },
+                { width: "32%" },
                 timeJokerDisabled && styles.jokerBtnUsed,
               ]}
               onPress={handleTimeJoker}
@@ -1271,8 +1385,29 @@ export default function QuickGameScreen() {
             <Pressable
               style={[
                 styles.jokerBtn,
+                styles.jokerTurbo,
+                { width: "32%" },
+                turboJokerDisabled && !turboActive && styles.jokerBtnUsed,
+                turboActive && styles.jokerTurboActive,
+              ]}
+              onPress={handleTurboJoker}
+              disabled={turboJokerDisabled || phase !== "playing"}
+            >
+              <Text style={[styles.jokerBtnText, styles.jokerTurboText]}>
+                {turboLocked
+                  ? t("quickGame.turboLocked")
+                  : turboActive
+                  ? t("quickGame.turboActive", { seconds: turboSecondsLeft })
+                  : turboJokersLeft <= 0
+                  ? t("quickGame.turboDone")
+                  : t("quickGame.turboJoker", { count: turboJokersLeft })}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.jokerBtn,
                 styles.jokerBomb,
-                { width: "48%" },
+                { width: "32%" },
                 bombJokerDisabled && styles.jokerBtnUsed,
               ]}
               onPress={handleBombJoker}
@@ -1281,9 +1416,14 @@ export default function QuickGameScreen() {
               <Text style={[styles.jokerBtnText, styles.jokerBombText]}>
                 {bombLocked
                   ? t("quickGame.bombLocked")
+                  : bombRoundLimitReached
+                  ? t("quickGame.bombRoundLimit")
                   : bombJokersLeft <= 0
                   ? t("quickGame.bombDone")
-                  : t("quickGame.bombJoker", { count: bombJokersLeft })}
+                  : t("quickGame.bombJoker", {
+                      count: bombJokersLeft,
+                      remaining: MAX_BOMB_PER_ROUND - bombUsesThisRound,
+                    })}
               </Text>
             </Pressable>
           </View>
@@ -1307,7 +1447,7 @@ export default function QuickGameScreen() {
               disabled={phase !== "playing"}
             >
               <Text style={[styles.pullBtnText, { color: playerColor }]}>
-                {t("common.pull")}
+                {turboActive ? `⚡ ${t("common.pull")}` : t("common.pull")}
               </Text>
             </Pressable>
           </Animated.View>
@@ -1546,6 +1686,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#ef444433",
     borderColor: "#ef4444",
   },
+  jokerTurbo: {
+    backgroundColor: "#a855f733",
+    borderColor: "#a855f7",
+  },
+  jokerTurboActive: {
+    backgroundColor: "#a855f755",
+    borderColor: "#c084fc",
+    opacity: 1,
+  },
   jokerBtnUsed: {
     backgroundColor: "#1e293b",
     borderColor: "#334155",
@@ -1553,12 +1702,16 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   jokerBtnText: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: "Inter_700Bold",
     color: "#fbbf24",
+    textAlign: "center",
   },
   jokerBombText: {
     color: "#ef4444",
+  },
+  jokerTurboText: {
+    color: "#c084fc",
   },
   modalBtnRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   modalBtnImg: { width: 28, height: 28 },

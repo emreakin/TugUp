@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
+import { FRIENDS_ENABLED } from "@/lib/features";
 
 export default function FriendInviteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,10 +26,18 @@ export default function FriendInviteScreen() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (!FRIENDS_ENABLED) {
+      router.replace("/");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!FRIENDS_ENABLED) return;
     setMessage(t("invite.friend.processing"));
   }, [t]);
 
   useEffect(() => {
+    if (!FRIENDS_ENABLED) return;
     if (!id) {
       setStatus("error");
       setMessage(t("invite.friend.invalidLink"));
@@ -54,6 +63,10 @@ export default function FriendInviteScreen() {
       }
     })();
   }, [id, ensureSession, token, t]);
+
+  if (!FRIENDS_ENABLED) {
+    return null;
+  }
 
   const title =
     status === "loading"

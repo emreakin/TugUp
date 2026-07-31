@@ -1,4 +1,5 @@
 import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { FRIENDS_ENABLED } from "@/lib/features";
 import { router } from "expo-router";
 import React from "react";
 import {
@@ -99,9 +100,11 @@ export default function HomeScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
-          <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
-        </Pressable>
+        {FRIENDS_ENABLED ? (
+          <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
+            <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
+          </Pressable>
+        ) : null}
         <Text style={styles.footerText}>v0.1.0 · TugUp</Text>
       </View>
     </View>

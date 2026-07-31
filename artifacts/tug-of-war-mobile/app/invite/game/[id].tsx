@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
+import { FRIENDS_ENABLED } from "@/lib/features";
 
 export default function GameInviteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,6 +31,10 @@ export default function GameInviteScreen() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!FRIENDS_ENABLED) {
+      router.replace("/");
+      return;
+    }
     ensureSession()
       .then((session) => {
         setPlayerName(session.user.displayName);
@@ -37,6 +42,10 @@ export default function GameInviteScreen() {
       })
       .catch(() => setReady(true));
   }, [ensureSession]);
+
+  if (!FRIENDS_ENABLED) {
+    return null;
+  }
 
   const joinGame = async () => {
     if (!id || !playerName.trim()) return;
