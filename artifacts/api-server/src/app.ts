@@ -3,6 +3,12 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { getLocale } from "./lib/i18n";
+import {
+  buildFriendInviteDeepLink,
+  buildGameInviteDeepLink,
+  inviteBridgeHtml,
+} from "./lib/inviteLinks";
 
 const app: Express = express();
 
@@ -31,6 +37,45 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// HTTPS invite bridges — WhatsApp only auto-links http(s) URLs
+app.get("/invite/friend/:id", (req, res) => {
+  const inviteId = String(req.params.id ?? "");
+  const deepLink = buildFriendInviteDeepLink(inviteId);
+  const locale = getLocale(req);
+  res
+    .type("html")
+    .send(
+      inviteBridgeHtml({
+        deepLink,
+        title: locale === "tr" ? "TugUp Arkadaş Daveti" : "TugUp Friend Invite",
+        subtitle:
+          locale === "tr"
+            ? "Uygulama açılmazsa aşağıdaki butona dokun."
+            : "If the app doesn’t open, tap the button below.",
+        openLabel: locale === "tr" ? "TugUp’ta Aç" : "Open in TugUp",
+      }),
+    );
+});
+
+app.get("/invite/game/:id", (req, res) => {
+  const inviteId = String(req.params.id ?? "");
+  const deepLink = buildGameInviteDeepLink(inviteId);
+  const locale = getLocale(req);
+  res
+    .type("html")
+    .send(
+      inviteBridgeHtml({
+        deepLink,
+        title: locale === "tr" ? "TugUp 1v1 Daveti" : "TugUp 1v1 Invite",
+        subtitle:
+          locale === "tr"
+            ? "Uygulama açılmazsa aşağıdaki butona dokun."
+            : "If the app doesn’t open, tap the button below.",
+        openLabel: locale === "tr" ? "TugUp’ta Aç" : "Open in TugUp",
+      }),
+    );
+});
 
 // Privacy Policy — required by Google Play + AdMob
 app.get("/api/privacy-policy", (_req, res) => {

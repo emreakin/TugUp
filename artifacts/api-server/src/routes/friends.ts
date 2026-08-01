@@ -3,17 +3,13 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { db, friendInvitesTable, usersTable } from "@workspace/db";
 import { generateId, requireAuth, type AuthedRequest } from "../lib/auth";
 import { addFriendship, listFriends, removeFriendship } from "../lib/friends";
+import { buildFriendInviteShareUrl } from "../lib/inviteLinks";
 import { logger } from "../lib/logger";
 import { reqT } from "../lib/i18n";
 
 const router = Router();
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const APP_SCHEME = "tug-of-war-mobile";
-
-function buildFriendInviteUrl(inviteId: string) {
-  return `${APP_SCHEME}://invite/friend/${inviteId}`;
-}
 
 // GET /api/friends — list accepted friends
 router.get("/", requireAuth, async (req: AuthedRequest, res) => {
@@ -38,7 +34,7 @@ router.post("/invite-link", requireAuth, async (req: AuthedRequest, res) => {
       expiresAt,
     });
 
-    const url = buildFriendInviteUrl(inviteId);
+    const url = buildFriendInviteShareUrl(inviteId);
     return res.json({
       inviteId,
       url,

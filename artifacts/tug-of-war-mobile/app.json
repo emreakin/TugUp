@@ -11,7 +11,8 @@
     "linking": {
       "scheme": "tug-of-war-mobile",
       "prefixes": [
-        "tug-of-war-mobile://"
+        "tug-of-war-mobile://",
+        "https://tugup-api.onrender.com"
       ]
     },
     "splash": {
@@ -24,7 +25,21 @@
     },
     "android": {
       "package": "com.tugup.game",
-      "versionCode": 9
+      "versionCode": 9,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "tugup-api.onrender.com",
+              "pathPrefix": "/invite"
+            }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"

@@ -4,19 +4,15 @@ import { eq, and, isNull, sql, desc, gt } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import crypto from "crypto";
 import { generateId, requireAuth, type AuthedRequest } from "../lib/auth";
+import { buildGameInviteShareUrl } from "../lib/inviteLinks";
 import { defaultPlayerName, fixedMatchup, reqT } from "../lib/i18n";
 
 const router = Router();
 
 const GAME_INVITE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-const APP_SCHEME = "tug-of-war-mobile";
 
 function generateToken(): string {
   return crypto.randomBytes(16).toString("hex");
-}
-
-function buildGameInviteUrl(inviteId: string) {
-  return `${APP_SCHEME}://invite/game/${inviteId}`;
 }
 
 // ── POST /api/game/join ─────────────────────────────────────────────
@@ -384,7 +380,7 @@ router.post("/create-invite", requireAuth, async (req: AuthedRequest, res) => {
       expiresAt,
     });
 
-    const url = buildGameInviteUrl(inviteId);
+    const url = buildGameInviteShareUrl(inviteId);
     logger.info({ roomId, inviteId, hostUserId: user.id }, "Private game invite created");
 
     return res.json({
