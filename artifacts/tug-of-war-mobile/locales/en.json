@@ -11,7 +11,15 @@
     "coins": "{{count}} coins",
     "dailyRewardTitle": "Daily Reward!",
     "dailyRewardMessage": "Day {{day}}: you earned +{{reward}} coins",
-    "dailyRewardOk": "Awesome"
+    "dailyRewardOk": "Awesome",
+    "yourName": "You: {{name}}",
+    "tapToEditName": "Edit name"
+  },
+  "profile": {
+    "editName": "Change Your Name",
+    "editNameSubtitle": "This name appears to friends and in matches.",
+    "save": "Save",
+    "nameRequired": "Name can’t be empty."
   },
   "settings": {
     "title": "Settings",

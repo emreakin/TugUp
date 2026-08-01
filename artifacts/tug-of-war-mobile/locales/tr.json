@@ -11,7 +11,15 @@
     "coins": "{{count}} coin",
     "dailyRewardTitle": "Günlük Ödül!",
     "dailyRewardMessage": "Gün {{day}}: +{{reward}} coin kazandın",
-    "dailyRewardOk": "Harika"
+    "dailyRewardOk": "Harika",
+    "yourName": "Sen: {{name}}",
+    "tapToEditName": "İsmi değiştir"
+  },
+  "profile": {
+    "editName": "İsmini Değiştir",
+    "editNameSubtitle": "Bu isim arkadaşlarında ve maçlarda görünür.",
+    "save": "Kaydet",
+    "nameRequired": "İsim boş olamaz."
   },
   "settings": {
     "title": "Ayarlar",

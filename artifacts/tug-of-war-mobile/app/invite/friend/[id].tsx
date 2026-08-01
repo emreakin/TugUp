@@ -16,11 +16,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
 
+function normalizeInviteId(raw: string | string[] | undefined): string | null {
+  if (!raw) return null;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value) return null;
+  return value.split("?")[0]?.split("#")[0]?.trim() || null;
+}
+
 export default function FriendInviteScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const inviteId = normalizeInviteId(rawId);
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 16 : insets.top;
-  const { token, ensureSession } = useAuth();
+  const { ensureSession } = useAuth();
   const { t } = useTranslation();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
@@ -38,19 +46,26 @@ export default function FriendInviteScreen() {
 
   useEffect(() => {
     if (!FRIENDS_ENABLED) return;
-    if (!id) {
+    if (!inviteId) {
       setStatus("error");
       setMessage(t("invite.friend.invalidLink"));
       return;
     }
 
+    let cancelled = false;
+
     (async () => {
       try {
         const session = await ensureSession();
-        const result = await apiFetch<{ accepted: boolean; friend: { displayName: string } | null }>(
-          `/api/friends/accept/${id}`,
-          { method: "POST", token: session.token },
-        );
+        if (cancelled) return;
+        const result = await apiFetch<{
+          accepted: boolean;
+          friend: { displayName: string } | null;
+        }>(`/api/friends/accept/${inviteId}`, {
+          method: "POST",
+          token: session.token,
+        });
+        if (cancelled) return;
         setStatus("success");
         setMessage(
           result.friend
@@ -58,11 +73,18 @@ export default function FriendInviteScreen() {
             : t("invite.friend.successGeneric"),
         );
       } catch (err) {
+        if (cancelled) return;
         setStatus("error");
         setMessage(err instanceof Error ? err.message : t("invite.friend.acceptFailed"));
       }
     })();
-  }, [id, ensureSession, token, t]);
+
+    return () => {
+      cancelled = true;
+    };
+    // Only re-run for a new invite id — do not depend on token (re-triggers after session)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inviteId]);
 
   if (!FRIENDS_ENABLED) {
     return null;

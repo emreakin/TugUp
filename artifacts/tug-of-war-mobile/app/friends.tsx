@@ -19,17 +19,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, type FriendSummary } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
+import { EditNameModal } from "@/components/EditNameModal";
 
 export default function FriendsScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const topInset = Platform.OS === "web" ? 16 : insets.top;
   const bottomInset = Platform.OS === "web" ? 16 : insets.bottom;
-  const { token, user, ensureSession } = useAuth();
+  const { token, user, ensureSession, updateDisplayName } = useAuth();
 
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [editNameVisible, setEditNameVisible] = useState(false);
 
   useEffect(() => {
     if (!FRIENDS_ENABLED) {
@@ -122,7 +124,15 @@ export default function FriendsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.profileCard}>
           <Text style={styles.profileLabel}>{t("friends.you")}</Text>
-          <Text style={styles.profileName}>{user?.displayName ?? t("common.player")}</Text>
+          <Pressable
+            style={styles.profileNameRow}
+            onPress={() => setEditNameVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("home.tapToEditName")}
+          >
+            <Text style={styles.profileName}>{user?.displayName ?? t("common.player")}</Text>
+            <Text style={styles.profileEdit}>✎</Text>
+          </Pressable>
           <Text style={styles.profileCode}>{t("friends.code", { code: user?.friendCode ?? "—" })}</Text>
         </View>
 
@@ -170,6 +180,13 @@ export default function FriendsScreen() {
           ))
         )}
       </ScrollView>
+
+      <EditNameModal
+        visible={editNameVisible}
+        initialName={user?.displayName ?? ""}
+        onClose={() => setEditNameVisible(false)}
+        onSave={updateDisplayName}
+      />
     </View>
   );
 }
@@ -201,7 +218,14 @@ const styles = StyleSheet.create({
     borderColor: "#334155",
   },
   profileLabel: { color: "#64748b", fontFamily: "Inter_600SemiBold", fontSize: 12 },
-  profileName: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 22, marginTop: 4 },
+  profileNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  profileName: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 22 },
+  profileEdit: { color: "#fbbf24", fontFamily: "Inter_700Bold", fontSize: 16 },
   profileCode: { color: "#94a3b8", fontFamily: "Inter_600SemiBold", fontSize: 14, marginTop: 4 },
   inviteBtn: {
     backgroundColor: "#3b82f6",

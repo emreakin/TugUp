@@ -70,13 +70,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateDisplayName = useCallback(
     async (displayName: string) => {
-      if (!token) return;
+      const trimmed = displayName.trim().slice(0, 24);
+      if (!trimmed) throw new Error("empty name");
+
+      let authToken = token;
+      if (!authToken) {
+        const session = await ensureSession(trimmed);
+        authToken = session.token;
+      }
+
       const updated = await apiFetch<PublicUser & { playerToken: string }>(
         "/api/auth/me",
         {
           method: "PATCH",
-          token,
-          body: JSON.stringify({ displayName }),
+          token: authToken,
+          body: JSON.stringify({ displayName: trimmed }),
         },
       );
       setUser({
@@ -87,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       await AsyncStorage.setItem(DISPLAY_NAME_KEY, updated.displayName);
     },
-    [token],
+    [token, ensureSession],
   );
 
   useEffect(() => {

@@ -1,9 +1,10 @@
+import { EditNameModal } from "@/components/EditNameModal";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { useAuth } from "@/contexts/AuthContext";
 import { FRIENDS_ENABLED } from "@/lib/features";
-import { apiFetch, type DailyClaimResult } from "@/lib/api";
+import { apiFetch, type CoinBalance, type DailyClaimResult } from "@/lib/api";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Image,
   Modal,
@@ -44,47 +45,48 @@ const MODE_CONFIG = [
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { ensureSession, token } = useAuth();
-  const [coinBalance, setCoinBalance] = useState<number | null>(null);
+  const { ensureSession, user, updateDisplayName } = useAuth();
+  const [coinBalance, setCoinBalance] = useState(0);
+  const [editNameVisible, setEditNameVisible] = useState(false);
   const [dailyReward, setDailyReward] = useState<{
     reward: number;
     streak: number;
   } | null>(null);
-  const claimingRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
 
       (async () => {
-        if (claimingRef.current) return;
-        claimingRef.current = true;
         try {
           const session = await ensureSession();
-          const authToken = session.token || token;
-          if (!authToken || cancelled) return;
-
           const result = await apiFetch<DailyClaimResult>("/api/coins/daily-claim", {
             method: "POST",
-            token: authToken,
+            token: session.token,
           });
-          if (cancelled) return;
 
+          // Apply claim even if focus flickered — otherwise Strict Mode drops the reward UI
           setCoinBalance(result.balance);
           if (result.claimed) {
-            setDailyReward({ reward: result.reward, streak: result.streak });
+            setDailyReward((prev) => prev ?? { reward: result.reward, streak: result.streak });
           }
         } catch {
-          // Balance stays null; home still usable offline-ish
-        } finally {
-          claimingRef.current = false;
+          try {
+            const session = await ensureSession();
+            const wallet = await apiFetch<CoinBalance>("/api/coins", {
+              token: session.token,
+            });
+            if (!cancelled) setCoinBalance(wallet.balance);
+          } catch {
+            if (!cancelled) setCoinBalance(0);
+          }
         }
       })();
 
       return () => {
         cancelled = true;
       };
-    }, [ensureSession, token]),
+    }, [ensureSession]),
   );
 
   const handlePress = (key: (typeof MODE_CONFIG)[number]["key"]) => {
@@ -115,7 +117,7 @@ export default function HomeScreen() {
         <View style={styles.coinBadge}>
           <Text style={styles.coinEmoji}>🪙</Text>
           <Text style={styles.coinText}>
-            {coinBalance == null ? "—" : t("home.coins", { count: coinBalance })}
+            {t("home.coins", { count: coinBalance })}
           </Text>
         </View>
         <LanguageSwitch />
@@ -130,6 +132,19 @@ export default function HomeScreen() {
         />
         <Text style={styles.brand}>TugUp</Text>
         <Text style={styles.tagline}>{t("home.tagline")}</Text>
+        <Pressable
+          style={styles.nameChip}
+          onPress={() => setEditNameVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t("home.tapToEditName")}
+        >
+          <Text style={styles.nameChipText}>
+            {t("home.yourName", {
+              name: user?.displayName ?? t("common.player"),
+            })}
+          </Text>
+          <Text style={styles.nameChipEdit}>✎</Text>
+        </Pressable>
       </View>
 
       {/* Mode buttons */}
@@ -160,6 +175,13 @@ export default function HomeScreen() {
         ) : null}
         <Text style={styles.footerText}>v0.1.0 · TugUp</Text>
       </View>
+
+      <EditNameModal
+        visible={editNameVisible}
+        initialName={user?.displayName ?? ""}
+        onClose={() => setEditNameVisible(false)}
+        onSave={updateDisplayName}
+      />
 
       <Modal visible={dailyReward != null} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -245,6 +267,28 @@ const styles = StyleSheet.create({
     color: "#64748b",
     marginTop: 6,
     textAlign: "center",
+  },
+  nameChip: {
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#1e293b",
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  nameChipText: {
+    color: "#e2e8f0",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+  },
+  nameChipEdit: {
+    color: "#fbbf24",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
   },
   buttonList: {
     width: "100%",

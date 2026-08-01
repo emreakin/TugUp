@@ -112,7 +112,7 @@ export default function OneVsOneScreen() {
   }));
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
-  const { token, ensureSession, playerToken: authPlayerToken } = useAuth();
+  const { token, ensureSession, playerToken: authPlayerToken, user, updateDisplayName } = useAuth();
   const params = useLocalSearchParams<{
     joinRoomId?: string;
     joinSide?: string;
@@ -131,6 +131,13 @@ export default function OneVsOneScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState("");
   const [opponentName, setOpponentName] = useState<string | null>(null);
+
+  // Prefill from saved profile name
+  useEffect(() => {
+    if (user?.displayName && !playerName) {
+      setPlayerName(user.displayName);
+    }
+  }, [user?.displayName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Onboarding state ─────────────────────────────────────────
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -353,6 +360,10 @@ export default function OneVsOneScreen() {
 
     try {
       const session = await ensureSession(playerName || t("common.player"));
+      const trimmedName = (playerName || t("common.player")).trim().slice(0, 24);
+      if (trimmedName && trimmedName !== session.user.displayName) {
+        await updateDisplayName(trimmedName).catch(() => {});
+      }
       const tokenToUse = session.playerToken ?? authPlayerToken;
       let token = tokenToUse ?? (await AsyncStorage.getItem("player_token"));
 
@@ -420,7 +431,7 @@ export default function OneVsOneScreen() {
       setErrorMsg(err instanceof Error ? err.message : t("oneVsOne.connectionFailed"));
       setPhase("name_input");
     }
-  }, [playerName, resetAnimations, matchMode, ensureSession, authPlayerToken, t]);
+  }, [playerName, resetAnimations, matchMode, ensureSession, authPlayerToken, updateDisplayName, t]);
 
   // ── Play again — clear token so server creates a brand-new room ───
   const playAgain = useCallback(async () => {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, friendInvitesTable, usersTable } from "@workspace/db";
 import { generateId, requireAuth, type AuthedRequest } from "../lib/auth";
 import { addFriendship, listFriends, removeFriendship } from "../lib/friends";
@@ -90,20 +90,41 @@ router.post("/accept/:inviteId", requireAuth, async (req: AuthedRequest, res) =>
     const rows = await db
       .select()
       .from(friendInvitesTable)
-      .where(
-        and(
-          eq(friendInvitesTable.id, inviteId),
-          isNull(friendInvitesTable.usedBy),
-          gt(friendInvitesTable.expiresAt, new Date()),
-        ),
-      )
+      .where(eq(friendInvitesTable.id, inviteId))
       .limit(1);
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: reqT(req, "invalidInvite") });
+      return res.status(404).json({ error: reqT(req, "inviteNotFound") });
     }
 
     const invite = rows[0];
+
+    // Idempotent: same user already accepted this invite
+    if (invite.usedBy === userId) {
+      const inviter = await db
+        .select({
+          id: usersTable.id,
+          displayName: usersTable.displayName,
+          friendCode: usersTable.friendCode,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.id, invite.inviterId))
+        .limit(1);
+      return res.json({
+        accepted: true,
+        friend: inviter[0] ?? null,
+        alreadyAccepted: true,
+      });
+    }
+
+    if (invite.usedBy) {
+      return res.status(410).json({ error: reqT(req, "inviteAlreadyUsed") });
+    }
+
+    if (invite.expiresAt.getTime() < Date.now()) {
+      return res.status(410).json({ error: reqT(req, "inviteExpired") });
+    }
+
     if (invite.inviterId === userId) {
       return res.status(400).json({ error: reqT(req, "cannotAcceptOwnFriendInvite") });
     }
@@ -116,7 +137,11 @@ router.post("/accept/:inviteId", requireAuth, async (req: AuthedRequest, res) =>
       .where(eq(friendInvitesTable.id, inviteId));
 
     const inviter = await db
-      .select({ id: usersTable.id, displayName: usersTable.displayName, friendCode: usersTable.friendCode })
+      .select({
+        id: usersTable.id,
+        displayName: usersTable.displayName,
+        friendCode: usersTable.friendCode,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, invite.inviterId))
       .limit(1);
