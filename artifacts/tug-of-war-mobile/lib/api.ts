@@ -56,7 +56,11 @@ export interface CoinBalance {
   canClaimToday: boolean;
   nextReward: number;
   nextStreak: number;
+  jokerCost?: number;
 }
+
+/** Must match server JOKER_COIN_COST */
+export const JOKER_COIN_COST = 25;
 
 export type DailyClaimResult =
   | {

@@ -20,6 +20,9 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch, JOKER_COIN_COST, type CoinBalance } from "@/lib/api";
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CHAR_WIDTH = 100;
 const ROPE_PAD = 4;
@@ -356,8 +359,13 @@ export default function QuickGameScreen() {
   const [bombUsesThisRound, setBombUsesThisRound] = useState(0);
   // Loading state for ad-earn button
   const [adLoading, setAdLoading] = useState(false);
-  // Joker picker modal (shown after rewarded ad)
+  // Earn method: watch ad vs pay coins
+  const [earnMethodVisible, setEarnMethodVisible] = useState(false);
+  const [coinBalance, setCoinBalance] = useState<number | null>(null);
+  const [coinPurchasing, setCoinPurchasing] = useState(false);
+  // Joker picker modal (shown after rewarded ad / coin purchase)
   const [jokerPickerVisible, setJokerPickerVisible] = useState(false);
+  const { ensureSession } = useAuth();
   // Best times per level (levelId -> remaining seconds at win)
   const [bestTimes, setBestTimes] = useState<Record<number, number>>({});
   // Whether the current win set a new best time (shown in modal)
@@ -748,7 +756,43 @@ export default function QuickGameScreen() {
     [phase, applySwipePulls],
   );
 
-  // ── Joker: Reklam izleyerek joker kazan ──────────────────────────────────
+  const grantJokerReward = useCallback(() => {
+    const canAddTime = timeJokersLeft < MAX_JOKERS;
+    const canAddBomb = bombJokersLeft < MAX_JOKERS;
+    const canAddTurbo = turboJokersLeft < MAX_JOKERS;
+
+    if (Platform.OS === "web") {
+      if (canAddTime) {
+        setTimeJokersLeft((prev) => {
+          const next = Math.min(MAX_JOKERS, prev + 1);
+          saveProgress(unlockedUpTo, next, bombJokersLeft, turboJokersLeft);
+          return next;
+        });
+      } else if (canAddBomb) {
+        setBombJokersLeft((prev) => {
+          const next = Math.min(MAX_JOKERS, prev + 1);
+          saveProgress(unlockedUpTo, timeJokersLeft, next, turboJokersLeft);
+          return next;
+        });
+      } else if (canAddTurbo) {
+        setTurboJokersLeft((prev) => {
+          const next = Math.min(MAX_JOKERS, prev + 1);
+          saveProgress(unlockedUpTo, timeJokersLeft, bombJokersLeft, next);
+          return next;
+        });
+      }
+    } else {
+      setJokerPickerVisible(true);
+    }
+  }, [
+    unlockedUpTo,
+    timeJokersLeft,
+    bombJokersLeft,
+    turboJokersLeft,
+    saveProgress,
+  ]);
+
+  // ── Joker: yöntem seç (reklam veya coin) ────────────────────────────────
   const handleEarnJoker = useCallback(async () => {
     const canAddTime = timeJokersLeft < MAX_JOKERS;
     const canAddBomb = bombJokersLeft < MAX_JOKERS;
@@ -758,35 +802,26 @@ export default function QuickGameScreen() {
       return;
     }
 
+    setEarnMethodVisible(true);
+    setCoinBalance(null);
+    try {
+      const session = await ensureSession();
+      const wallet = await apiFetch<CoinBalance>("/api/coins", {
+        token: session.token,
+      });
+      setCoinBalance(wallet.balance);
+    } catch {
+      setCoinBalance(0);
+    }
+  }, [timeJokersLeft, bombJokersLeft, turboJokersLeft, ensureSession, t]);
+
+  const handleEarnByAd = useCallback(async () => {
+    setEarnMethodVisible(false);
     setAdLoading(true);
 
     const onReward = () => {
       setAdLoading(false);
-      if (Platform.OS === "web") {
-        // Web: auto-pick first available
-        if (canAddTime) {
-          setTimeJokersLeft((prev) => {
-            const next = Math.min(MAX_JOKERS, prev + 1);
-            saveProgress(unlockedUpTo, next, bombJokersLeft, turboJokersLeft);
-            return next;
-          });
-        } else if (canAddBomb) {
-          setBombJokersLeft((prev) => {
-            const next = Math.min(MAX_JOKERS, prev + 1);
-            saveProgress(unlockedUpTo, timeJokersLeft, next, turboJokersLeft);
-            return next;
-          });
-        } else {
-          setTurboJokersLeft((prev) => {
-            const next = Math.min(MAX_JOKERS, prev + 1);
-            saveProgress(unlockedUpTo, timeJokersLeft, bombJokersLeft, next);
-            return next;
-          });
-        }
-      } else {
-        // Native: open joker picker modal (Alert won't work while ad is still closing)
-        setJokerPickerVisible(true);
-      }
+      grantJokerReward();
     };
 
     const onError = () => {
@@ -807,10 +842,32 @@ export default function QuickGameScreen() {
         onError();
       }
     } else {
-      // Web preview — skip ad
       onReward();
     }
-  }, [unlockedUpTo, timeJokersLeft, bombJokersLeft, turboJokersLeft, saveProgress, t]);
+  }, [grantJokerReward, t]);
+
+  const handleEarnByCoins = useCallback(async () => {
+    if (coinBalance == null || coinBalance < JOKER_COIN_COST || coinPurchasing) return;
+
+    setCoinPurchasing(true);
+    try {
+      const session = await ensureSession();
+      const result = await apiFetch<{ balance: number }>("/api/coins/purchase-joker", {
+        method: "POST",
+        token: session.token,
+      });
+      setCoinBalance(result.balance);
+      setEarnMethodVisible(false);
+      grantJokerReward();
+    } catch (err) {
+      Alert.alert(
+        t("common.error"),
+        err instanceof Error ? err.message : t("quickGame.coinPurchaseFailed"),
+      );
+    } finally {
+      setCoinPurchasing(false);
+    }
+  }, [coinBalance, coinPurchasing, ensureSession, grantJokerReward, t]);
 
   // ── Joker: Zaman Jokeri (+2 saniye) ──────────────────────────────────────
   const handleTimeJoker = useCallback(() => {
@@ -993,7 +1050,79 @@ export default function QuickGameScreen() {
           })}
         </ScrollView>
 
-        {/* Joker picker modal — shown after rewarded ad earns reward */}
+        {/* Earn method: watch ad or pay coins */}
+        <Modal visible={earnMethodVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { paddingVertical: 28 }]}>
+              <Text style={styles.modalEmoji}>🎁</Text>
+              <Text style={[styles.modalTitle, { color: "#fbbf24", fontSize: 22 }]}>
+                {t("quickGame.earnMethodTitle")}
+              </Text>
+              <Text style={[styles.modalSubtitle, { marginBottom: 20 }]}>
+                {t("quickGame.earnMethodSubtitle")}
+              </Text>
+
+              <Pressable
+                style={[styles.jokerPickerBtn, adLoading && styles.jokerPickerBtnDisabled]}
+                disabled={adLoading || coinPurchasing}
+                onPress={handleEarnByAd}
+              >
+                <Text style={styles.jokerPickerBtnText}>
+                  {adLoading ? t("quickGame.loading") : t("quickGame.earnByAd")}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.jokerPickerBtn,
+                  styles.jokerCoinBtn,
+                  (coinBalance == null ||
+                    coinBalance < JOKER_COIN_COST ||
+                    coinPurchasing) &&
+                    styles.jokerPickerBtnDisabled,
+                ]}
+                disabled={
+                  coinBalance == null ||
+                  coinBalance < JOKER_COIN_COST ||
+                  coinPurchasing
+                }
+                onPress={handleEarnByCoins}
+              >
+                <Text
+                  style={[
+                    styles.jokerPickerBtnText,
+                    coinBalance != null &&
+                      coinBalance < JOKER_COIN_COST &&
+                      styles.jokerCoinBtnTextDisabled,
+                  ]}
+                >
+                  {coinPurchasing
+                    ? t("quickGame.loading")
+                    : coinBalance == null
+                      ? t("quickGame.loading")
+                      : coinBalance < JOKER_COIN_COST
+                        ? t("quickGame.earnByCoinsDisabled", {
+                            balance: coinBalance,
+                            cost: JOKER_COIN_COST,
+                          })
+                        : t("quickGame.earnByCoins", { cost: JOKER_COIN_COST })}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.jokerPickerBtn, styles.jokerPickerBtnCancel]}
+                disabled={coinPurchasing || adLoading}
+                onPress={() => setEarnMethodVisible(false)}
+              >
+                <Text style={[styles.jokerPickerBtnText, { color: "#64748b" }]}>
+                  {t("common.cancel")}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Joker picker modal — shown after rewarded ad / coin purchase */}
         <Modal visible={jokerPickerVisible} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { paddingVertical: 28 }]}>
@@ -1929,6 +2058,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: "center",
     marginBottom: 10,
+  },
+  jokerCoinBtn: {
+    backgroundColor: "#78350f",
+    borderColor: "#fbbf24",
+  },
+  jokerCoinBtnTextDisabled: {
+    color: "#78716c",
   },
   jokerPickerBtnDisabled: {
     backgroundColor: "#1e293b",

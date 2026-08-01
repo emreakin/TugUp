@@ -4,7 +4,10 @@ import { db, userWalletsTable, coinTransactionsTable, type UserWallet } from "@w
 /** Consecutive-day rewards: day 1→10 … day 5+→100 */
 export const DAILY_REWARDS = [10, 25, 50, 75, 100] as const;
 
-export type CoinReason = "daily_login" | "purchase" | "admin" | "refund";
+export type CoinReason = "daily_login" | "purchase" | "joker_purchase" | "admin" | "refund";
+
+/** Fixed coin cost to unlock one Quick Game joker */
+export const JOKER_COIN_COST = 25;
 
 export function utcToday(): string {
   return new Date().toISOString().slice(0, 10);
