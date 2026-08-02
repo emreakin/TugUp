@@ -2,7 +2,7 @@
   "expo": {
     "name": "TugUp",
     "slug": "tug-of-war-mobile",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tug-of-war-mobile",
@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.tugup.game",
-      "versionCode": 9,
+      "versionCode": 10,
       "intentFilters": [
         {
           "action": "VIEW",

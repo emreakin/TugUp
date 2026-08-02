@@ -173,7 +173,7 @@ export default function HomeScreen() {
             <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
           </Pressable>
         ) : null}
-        <Text style={styles.footerText}>v0.1.0 · TugUp</Text>
+        <Text style={styles.footerText}>v0.1.2 · TugUp</Text>
       </View>
 
       <EditNameModal
