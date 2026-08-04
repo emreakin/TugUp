@@ -121,6 +121,7 @@
     "you": "You",
     "code": "Code: {{code}}",
     "shareInviteLink": "Share Friend Invite Link",
+    "inviteRewardInfo": "When your invite is accepted you earn coins: friend who installs for the first time → {{newReward}} coins, returning player → {{returningReward}} coins.",
     "friendsCount": "Your Friends ({{count}})",
     "emptyTitle": "No friends yet",
     "emptyText": "Share the invite link via WhatsApp or another app. Anyone who opens it becomes your friend automatically.",

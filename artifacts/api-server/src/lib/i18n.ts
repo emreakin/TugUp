@@ -30,7 +30,8 @@ const MESSAGES = {
     defaultPlayer: "Oyuncu",
     teamA: "Takım A",
     teamB: "Takım B",
-    friendShareMessage: "TugUp'ta arkadaş olalım! {{url}}",
+    friendShareMessage:
+      "TugUp'ta arkadaş olalım! {{url}}\n\n(Yeni oyuncu: 250 coin · Mevcut oyuncu: 100 coin kazanırsın)",
     gameShareMessage: "{{name}} seni TugUp 1v1'e davet ediyor! {{url}}",
   },
   en: {
@@ -60,7 +61,8 @@ const MESSAGES = {
     defaultPlayer: "Player",
     teamA: "Team A",
     teamB: "Team B",
-    friendShareMessage: "Let's be friends on TugUp! {{url}}",
+    friendShareMessage:
+      "Let's be friends on TugUp! {{url}}\n\n(New player: you earn 250 coins · Returning player: 100 coins)",
     gameShareMessage: "{{name}} invited you to a TugUp 1v1 match! {{url}}",
   },
 } as const;

@@ -2,6 +2,11 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, friendInvitesTable, usersTable } from "@workspace/db";
 import { generateId, requireAuth, type AuthedRequest } from "../lib/auth";
+import {
+  creditCoins,
+  REFERRAL_REWARD_NEW_USER,
+  REFERRAL_REWARD_RETURNING_USER,
+} from "../lib/coins";
 import { addFriendship, listFriends, removeFriendship } from "../lib/friends";
 import { buildFriendInviteShareUrl } from "../lib/inviteLinks";
 import { logger } from "../lib/logger";
@@ -10,6 +15,17 @@ import { reqT } from "../lib/i18n";
 const router = Router();
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/**
+ * New install / first-time user: account created at or after the invite.
+ * Returning user: account already existed before this invite was created.
+ */
+function isNewReferredUser(
+  accepterCreatedAt: Date,
+  inviteCreatedAt: Date,
+): boolean {
+  return accepterCreatedAt.getTime() >= inviteCreatedAt.getTime();
+}
 
 // GET /api/friends — list accepted friends
 router.get("/", requireAuth, async (req: AuthedRequest, res) => {
@@ -40,6 +56,8 @@ router.post("/invite-link", requireAuth, async (req: AuthedRequest, res) => {
       url,
       shareMessage: reqT(req, "friendShareMessage", { url }),
       expiresAt: expiresAt.toISOString(),
+      referralRewardNew: REFERRAL_REWARD_NEW_USER,
+      referralRewardReturning: REFERRAL_REWARD_RETURNING_USER,
     });
   } catch (err) {
     logger.error({ err }, "Create friend invite error");
@@ -129,12 +147,54 @@ router.post("/accept/:inviteId", requireAuth, async (req: AuthedRequest, res) =>
       return res.status(400).json({ error: reqT(req, "cannotAcceptOwnFriendInvite") });
     }
 
+    const accepterRows = await db
+      .select({
+        id: usersTable.id,
+        createdAt: usersTable.createdAt,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    const accepter = accepterRows[0];
+    if (!accepter) {
+      return res.status(404).json({ error: reqT(req, "userNotFound") });
+    }
+
     await addFriendship(invite.inviterId, userId);
 
     await db
       .update(friendInvitesTable)
       .set({ usedBy: userId, usedAt: new Date() })
       .where(eq(friendInvitesTable.id, inviteId));
+
+    const isNewUser = isNewReferredUser(accepter.createdAt, invite.createdAt);
+    const reward = isNewUser
+      ? REFERRAL_REWARD_NEW_USER
+      : REFERRAL_REWARD_RETURNING_USER;
+
+    let rewardBalance: number | null = null;
+    try {
+      const credited = await creditCoins(
+        invite.inviterId,
+        reward,
+        "friend_referral",
+      );
+      rewardBalance = credited.balance;
+      logger.info(
+        {
+          inviteId,
+          inviterId: invite.inviterId,
+          userId,
+          isNewUser,
+          reward,
+          rewardBalance,
+        },
+        "Friend invite accepted — inviter rewarded",
+      );
+    } catch (rewardErr) {
+      logger.error({ err: rewardErr, inviteId }, "Friend referral reward failed");
+    }
 
     const inviter = await db
       .select({
@@ -146,11 +206,14 @@ router.post("/accept/:inviteId", requireAuth, async (req: AuthedRequest, res) =>
       .where(eq(usersTable.id, invite.inviterId))
       .limit(1);
 
-    logger.info({ inviteId, inviterId: invite.inviterId, userId }, "Friend invite accepted");
-
     return res.json({
       accepted: true,
       friend: inviter[0] ?? null,
+      referralReward: {
+        amount: reward,
+        isNewUser,
+        inviterBalance: rewardBalance,
+      },
     });
   } catch (err) {
     logger.error({ err }, "Accept friend invite error");

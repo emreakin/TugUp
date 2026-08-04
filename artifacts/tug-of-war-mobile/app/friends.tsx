@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch, type FriendSummary } from "@/lib/api";
+import { apiFetch, type FriendSummary, REFERRAL_REWARD_NEW_USER, REFERRAL_REWARD_RETURNING_USER } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
 import { EditNameModal } from "@/components/EditNameModal";
 
@@ -151,6 +151,13 @@ export default function FriendsScreen() {
           )}
         </Pressable>
 
+        <Text style={styles.inviteRewardInfo}>
+          {t("friends.inviteRewardInfo", {
+            newReward: REFERRAL_REWARD_NEW_USER,
+            returningReward: REFERRAL_REWARD_RETURNING_USER,
+          })}
+        </Text>
+
         <Text style={styles.sectionTitle}>{t("friends.friendsCount", { count: friends.length })}</Text>
 
         {loading ? (
@@ -239,6 +246,13 @@ const styles = StyleSheet.create({
   },
   inviteBtnPressed: { opacity: 0.85 },
   inviteBtnText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 },
+  inviteRewardInfo: {
+    color: "#fbbf24",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: -4,
+  },
   sectionTitle: {
     color: "#94a3b8",
     fontFamily: "Inter_700Bold",

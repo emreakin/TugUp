@@ -121,6 +121,7 @@
     "you": "Sen",
     "code": "Kod: {{code}}",
     "shareInviteLink": "Arkadaş Davet Linki Paylaş",
+    "inviteRewardInfo": "Davetin kabul edilirse coin kazanırsın: uygulamayı ilk kez indiren arkadaş → {{newReward}} coin, daha önce kullanan → {{returningReward}} coin.",
     "friendsCount": "Arkadaşların ({{count}})",
     "emptyTitle": "Henüz arkadaş yok",
     "emptyText": "Davet linkini WhatsApp veya başka bir uygulamayla paylaş. Linki açan kişi otomatik arkadaşın olur.",

@@ -62,6 +62,10 @@ export interface CoinBalance {
 /** Must match server JOKER_COIN_COST */
 export const JOKER_COIN_COST = 25;
 
+/** Must match server referral rewards */
+export const REFERRAL_REWARD_NEW_USER = 250;
+export const REFERRAL_REWARD_RETURNING_USER = 100;
+
 export type DailyClaimResult =
   | {
       claimed: true;
