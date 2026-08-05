@@ -38,6 +38,49 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// Android App Links verification (Google Play Deep Links)
+// https://tugup-api.onrender.com/.well-known/assetlinks.json
+app.get("/.well-known/assetlinks.json", (_req, res) => {
+  const packageName =
+    process.env.ANDROID_PACKAGE_NAME?.trim() || "com.tugup.game";
+  const fingerprints = (process.env.ANDROID_SHA256_FINGERPRINTS ?? "")
+    .split(",")
+    .map((s) => s.trim().replace(/:/g, "").toUpperCase())
+    .filter(Boolean)
+    // Re-insert colons every 2 chars for Digital Asset Links format
+    .map((hex) =>
+      hex.includes(":")
+        ? hex
+        : (hex.match(/.{1,2}/g) ?? []).join(":"),
+    );
+
+  if (fingerprints.length === 0) {
+    logger.warn(
+      "assetlinks.json requested but ANDROID_SHA256_FINGERPRINTS is empty",
+    );
+    return res.status(503).json([
+      {
+        error:
+          "ANDROID_SHA256_FINGERPRINTS is not configured on the API server",
+      },
+    ]);
+  }
+
+  res
+    .type("application/json")
+    .set("Cache-Control", "public, max-age=3600")
+    .json([
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: {
+          namespace: "android_app",
+          package_name: packageName,
+          sha256_cert_fingerprints: fingerprints,
+        },
+      },
+    ]);
+});
+
 // HTTPS invite bridges — WhatsApp only auto-links http(s) URLs
 app.get("/invite/friend/:id", (req, res) => {
   const inviteId = String(req.params.id ?? "");
