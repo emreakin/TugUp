@@ -2,6 +2,15 @@ const AD_UNIT_ID =
   process.env.EXPO_PUBLIC_ADMOB_REWARDED_UNIT_ID ??
   "ca-app-pub-3940256099942544/5224354917";
 
+/** Google sample banner — replace via EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID in AdMob */
+const BANNER_AD_UNIT_ID =
+  process.env.EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID ??
+  "ca-app-pub-3940256099942544/6300978111";
+
+export function getBannerAdUnitId(): string {
+  return BANNER_AD_UNIT_ID;
+}
+
 export async function initMobileAds(): Promise<void> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
