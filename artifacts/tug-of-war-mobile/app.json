@@ -29,7 +29,7 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "autoVerify": false,
+          "autoVerify": true,
           "category": ["BROWSABLE", "DEFAULT"],
           "data": [
             {

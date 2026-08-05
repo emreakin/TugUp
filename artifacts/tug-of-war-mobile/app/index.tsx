@@ -1,4 +1,5 @@
 import { EditNameModal } from "@/components/EditNameModal";
+import { HomeBannerAd } from "@/components/HomeBannerAd";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { useAuth } from "@/contexts/AuthContext";
 import { FRIENDS_ENABLED } from "@/lib/features";
@@ -107,73 +108,84 @@ export default function HomeScreen() {
         styles.outerContainer,
         {
           paddingTop: Platform.OS === "web" ? 0 : insets.top,
-          paddingBottom: Platform.OS === "web" ? 0 : insets.bottom,
         },
       ]}
     >
       <StatusBar barStyle="light-content" />
 
-      <View style={[styles.topBar, { top: topPad }]}>
-        <View style={styles.coinBadge}>
-          <Text style={styles.coinEmoji}>🪙</Text>
-          <Text style={styles.coinText}>
-            {t("home.coins", { count: coinBalance })}
-          </Text>
+      <View style={styles.mainContent}>
+        <View style={[styles.topBar, { top: topPad }]}>
+          <View style={styles.coinBadge}>
+            <Text style={styles.coinEmoji}>🪙</Text>
+            <Text style={styles.coinText}>
+              {t("home.coins", { count: coinBalance })}
+            </Text>
+          </View>
+          <LanguageSwitch />
         </View>
-        <LanguageSwitch />
-      </View>
 
-      {/* Logo area */}
-      <View style={styles.header}>
-        <Image
-          source={require("../assets/images/icon.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.brand}>TugUp</Text>
-        <Text style={styles.tagline}>{t("home.tagline")}</Text>
-        <Pressable
-          style={styles.nameChip}
-          onPress={() => setEditNameVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel={t("home.tapToEditName")}
-        >
-          <Text style={styles.nameChipText}>
-            {t("home.yourName", {
-              name: user?.displayName ?? t("common.player"),
-            })}
-          </Text>
-          <Text style={styles.nameChipEdit}>✎</Text>
-        </Pressable>
-      </View>
-
-      {/* Mode buttons */}
-      <View style={styles.buttonList}>
-        {MODE_CONFIG.map((mode) => (
+        {/* Logo area */}
+        <View style={styles.header}>
+          <Image
+            source={require("../assets/images/icon.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.brand}>TugUp</Text>
+          <Text style={styles.tagline}>{t("home.tagline")}</Text>
           <Pressable
-            key={mode.key}
-            style={({ pressed }) => [
-              styles.modeButton,
-              { backgroundColor: mode.color },
-              pressed && styles.modeButtonPressed,
-            ]}
-            onPress={() => handlePress(mode.key)}
+            style={styles.nameChip}
+            onPress={() => setEditNameVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("home.tapToEditName")}
           >
-            <Text style={styles.modeEmoji}>{mode.emoji}</Text>
-            <Text style={styles.modeLabel}>{t(mode.labelKey)}</Text>
-            <Text style={styles.modeArrow}>›</Text>
+            <Text style={styles.nameChipText}>
+              {t("home.yourName", {
+                name: user?.displayName ?? t("common.player"),
+              })}
+            </Text>
+            <Text style={styles.nameChipEdit}>✎</Text>
           </Pressable>
-        ))}
+        </View>
+
+        {/* Mode buttons */}
+        <View style={styles.buttonList}>
+          {MODE_CONFIG.map((mode) => (
+            <Pressable
+              key={mode.key}
+              style={({ pressed }) => [
+                styles.modeButton,
+                { backgroundColor: mode.color },
+                pressed && styles.modeButtonPressed,
+              ]}
+              onPress={() => handlePress(mode.key)}
+            >
+              <Text style={styles.modeEmoji}>{mode.emoji}</Text>
+              <Text style={styles.modeLabel}>{t(mode.labelKey)}</Text>
+              <Text style={styles.modeArrow}>›</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          {FRIENDS_ENABLED ? (
+            <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
+              <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
+            </Pressable>
+          ) : null}
+          <Text style={styles.footerText}>v0.1.2 · TugUp</Text>
+        </View>
       </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        {FRIENDS_ENABLED ? (
-          <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
-            <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
-          </Pressable>
-        ) : null}
-        <Text style={styles.footerText}>v0.1.2 · TugUp</Text>
+      {/* Bottom banner — adaptive, non-intrusive; hidden if load fails */}
+      <View
+        style={[
+          styles.bannerSlot,
+          { paddingBottom: Platform.OS === "web" ? 0 : Math.max(insets.bottom, 4) },
+        ]}
+      >
+        <HomeBannerAd />
       </View>
 
       <EditNameModal
@@ -213,9 +225,17 @@ const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
     backgroundColor: "#0f172a",
+  },
+  mainContent: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 28,
+  },
+  bannerSlot: {
+    width: "100%",
+    alignItems: "center",
+    backgroundColor: "#0f172a",
   },
   topBar: {
     position: "absolute",
@@ -331,7 +351,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.6)",
   },
   footer: {
-    marginBottom: 24,
+    marginBottom: 12,
     alignItems: "center",
     gap: 12,
   },
