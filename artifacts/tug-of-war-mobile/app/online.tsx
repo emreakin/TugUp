@@ -232,69 +232,41 @@ export default function OnlineScreen() {
           <Text style={styles.subtitle}>{t("online.subtitle")}</Text>
         </View>
 
-        {/* Matchup list */}
+        {/* Matchup list — only active; pending/inactive hidden */}
         {matchupsLoading ? (
           <ActivityIndicator color="#ef4444" style={{ marginVertical: 32 }} />
-        ) : (() => {
-          const active = matchups.filter((m) => m.isActive);
-          const inactive = matchups.filter((m) => !m.isActive);
-          return (
-            <>
-              <View style={styles.list}>
-                {active.map((m) => {
-                  const leftLeads = m.leftWins > m.rightWins;
-                  const rightLeads = m.rightWins > m.leftWins;
-                  return (
-                    <Pressable
-                      key={m.id}
-                      style={({ pressed }) => [
-                        styles.card,
-                        pressed && styles.cardPressed,
-                      ]}
-                      onPress={() => handleSelect(m)}
-                    >
-                      <Text style={styles.cardEmoji}>{m.emoji}</Text>
-                      <View style={styles.cardMiddle}>
-                        <Text style={[styles.teamName, { color: m.leftColor, textAlign: "center" }]}>
-                          {leftLeads ? "👑 " : ""}{m.leftTeam}
-                        </Text>
-                        <Text style={styles.vsText}>{t("common.vs")}</Text>
-                        <Text style={[styles.teamName, { color: m.rightColor, textAlign: "center" }]}>
-                          {m.rightTeam}{rightLeads ? " 👑" : ""}
-                        </Text>
-                      </View>
-                      <Feather name="chevron-right" size={20} color="#475569" />
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {inactive.length > 0 && (
-                <>
-                  <View style={styles.divider} />
-                  <Text style={styles.sectionTitle}>{t("online.pending")}</Text>
-                  <View style={styles.list}>
-                    {inactive.map((m) => (
-                      <View key={m.id} style={[styles.card, styles.cardInactive]}>
-                        <Text style={[styles.cardEmoji, styles.cardEmojiInactive]}>{m.emoji}</Text>
-                        <View style={styles.cardMiddle}>
-                          <Text style={[styles.teamName, { color: m.leftColor, textAlign: "center" }, styles.teamNameInactive]}>
-                            {m.leftTeam}
-                          </Text>
-                          <Text style={styles.vsText}>{t("common.vs")}</Text>
-                          <Text style={[styles.teamName, { color: m.rightColor, textAlign: "center" }, styles.teamNameInactive]}>
-                            {m.rightTeam}
-                          </Text>
-                        </View>
-                        <Text style={styles.inactiveBadge}>⏳</Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
-            </>
-          );
-        })()}
+        ) : (
+          <View style={styles.list}>
+            {matchups
+              .filter((m) => m.isActive)
+              .map((m) => {
+                const leftLeads = m.leftWins > m.rightWins;
+                const rightLeads = m.rightWins > m.leftWins;
+                return (
+                  <Pressable
+                    key={m.id}
+                    style={({ pressed }) => [
+                      styles.card,
+                      pressed && styles.cardPressed,
+                    ]}
+                    onPress={() => handleSelect(m)}
+                  >
+                    <Text style={styles.cardEmoji}>{m.emoji}</Text>
+                    <View style={styles.cardMiddle}>
+                      <Text style={[styles.teamName, { color: m.leftColor, textAlign: "center" }]}>
+                        {leftLeads ? "👑 " : ""}{m.leftTeam}
+                      </Text>
+                      <Text style={styles.vsText}>{t("common.vs")}</Text>
+                      <Text style={[styles.teamName, { color: m.rightColor, textAlign: "center" }]}>
+                        {m.rightTeam}{rightLeads ? " 👑" : ""}
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color="#475569" />
+                  </Pressable>
+                );
+              })}
+          </View>
+        )}
 
         {/* Mücadele Öner — geçici olarak gizli (kod açık kalsın) */}
         {false && (

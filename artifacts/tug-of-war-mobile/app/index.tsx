@@ -3,7 +3,6 @@ import { HomeBannerAd } from "@/components/HomeBannerAd";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { useAuth } from "@/contexts/AuthContext";
 import { FRIENDS_ENABLED } from "@/lib/features";
-import { apiFetch, type CoinBalance, type DailyClaimResult } from "@/lib/api";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
@@ -11,6 +10,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -25,69 +25,39 @@ const MODE_CONFIG = [
     labelKey: "home.modes.quickGame" as const,
     emoji: "⚡",
     color: "#ef4444",
-    gradient: ["#ef4444", "#dc2626"],
   },
   {
     key: "1v1" as const,
     labelKey: "home.modes.oneVsOne" as const,
     emoji: "👥",
     color: "#3b82f6",
-    gradient: ["#3b82f6", "#2563eb"],
   },
   {
     key: "online" as const,
     labelKey: "home.modes.online" as const,
     emoji: "🌐",
     color: "#10b981",
-    gradient: ["#10b981", "#059669"],
   },
 ] as const;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { ensureSession, user, updateDisplayName } = useAuth();
-  const [coinBalance, setCoinBalance] = useState(0);
+  const {
+    user,
+    updateDisplayName,
+    coinBalance,
+    dailyReward,
+    dismissDailyReward,
+    refreshCoins,
+  } = useAuth();
   const [editNameVisible, setEditNameVisible] = useState(false);
-  const [dailyReward, setDailyReward] = useState<{
-    reward: number;
-    streak: number;
-  } | null>(null);
 
+  // Refresh coins when returning to home (uses cached single-flight claim)
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-
-      (async () => {
-        try {
-          const session = await ensureSession();
-          const result = await apiFetch<DailyClaimResult>("/api/coins/daily-claim", {
-            method: "POST",
-            token: session.token,
-          });
-
-          // Apply claim even if focus flickered — otherwise Strict Mode drops the reward UI
-          setCoinBalance(result.balance);
-          if (result.claimed) {
-            setDailyReward((prev) => prev ?? { reward: result.reward, streak: result.streak });
-          }
-        } catch {
-          try {
-            const session = await ensureSession();
-            const wallet = await apiFetch<CoinBalance>("/api/coins", {
-              token: session.token,
-            });
-            if (!cancelled) setCoinBalance(wallet.balance);
-          } catch {
-            if (!cancelled) setCoinBalance(0);
-          }
-        }
-      })();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [ensureSession]),
+      refreshCoins().catch(() => {});
+    }, [refreshCoins]),
   );
 
   const handlePress = (key: (typeof MODE_CONFIG)[number]["key"]) => {
@@ -100,21 +70,17 @@ export default function HomeScreen() {
     }
   };
 
-  const topPad = (Platform.OS === "web" ? 16 : insets.top) + 8;
-
   return (
     <View
       style={[
         styles.outerContainer,
-        {
-          paddingTop: Platform.OS === "web" ? 0 : insets.top,
-        },
+        { paddingTop: Platform.OS === "web" ? 8 : insets.top },
       ]}
     >
       <StatusBar barStyle="light-content" />
 
       <View style={styles.mainContent}>
-        <View style={[styles.topBar, { top: topPad }]}>
+        <View style={styles.topBar}>
           <View style={styles.coinBadge}>
             <Text style={styles.coinEmoji}>🪙</Text>
             <Text style={styles.coinText}>
@@ -124,61 +90,63 @@ export default function HomeScreen() {
           <LanguageSwitch />
         </View>
 
-        {/* Logo area */}
-        <View style={styles.header}>
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.brand}>TugUp</Text>
-          <Text style={styles.tagline}>{t("home.tagline")}</Text>
-          <Pressable
-            style={styles.nameChip}
-            onPress={() => setEditNameVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel={t("home.tapToEditName")}
-          >
-            <Text style={styles.nameChipText}>
-              {t("home.yourName", {
-                name: user?.displayName ?? t("common.player"),
-              })}
-            </Text>
-            <Text style={styles.nameChipEdit}>✎</Text>
-          </Pressable>
-        </View>
-
-        {/* Mode buttons */}
-        <View style={styles.buttonList}>
-          {MODE_CONFIG.map((mode) => (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View style={styles.header}>
+            <Image
+              source={require("../assets/images/icon.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.tagline}>{t("home.tagline")}</Text>
             <Pressable
-              key={mode.key}
-              style={({ pressed }) => [
-                styles.modeButton,
-                { backgroundColor: mode.color },
-                pressed && styles.modeButtonPressed,
-              ]}
-              onPress={() => handlePress(mode.key)}
+              style={styles.nameChip}
+              onPress={() => setEditNameVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("home.tapToEditName")}
             >
-              <Text style={styles.modeEmoji}>{mode.emoji}</Text>
-              <Text style={styles.modeLabel}>{t(mode.labelKey)}</Text>
-              <Text style={styles.modeArrow}>›</Text>
+              <Text style={styles.nameChipText}>
+                {t("home.yourName", {
+                  name: user?.displayName ?? t("common.player"),
+                })}
+              </Text>
+              <Text style={styles.nameChipEdit}>✎</Text>
             </Pressable>
-          ))}
-        </View>
+          </View>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          {FRIENDS_ENABLED ? (
-            <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
-              <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
-            </Pressable>
-          ) : null}
-          <Text style={styles.footerText}>v0.1.2 · TugUp</Text>
-        </View>
+          <View style={styles.buttonList}>
+            {MODE_CONFIG.map((mode) => (
+              <Pressable
+                key={mode.key}
+                style={({ pressed }) => [
+                  styles.modeButton,
+                  { backgroundColor: mode.color },
+                  pressed && styles.modeButtonPressed,
+                ]}
+                onPress={() => handlePress(mode.key)}
+              >
+                <Text style={styles.modeEmoji}>{mode.emoji}</Text>
+                <Text style={styles.modeLabel}>{t(mode.labelKey)}</Text>
+                <Text style={styles.modeArrow}>›</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.footer}>
+            {FRIENDS_ENABLED ? (
+              <Pressable style={styles.footerBtn} onPress={() => router.push("/friends")}>
+                <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
+              </Pressable>
+            ) : null}
+            <Text style={styles.footerText}>v0.1.3 · TugUp</Text>
+          </View>
+        </ScrollView>
       </View>
 
-      {/* Bottom banner — adaptive, non-intrusive; hidden if load fails */}
       <View
         style={[
           styles.bannerSlot,
@@ -210,7 +178,7 @@ export default function HomeScreen() {
             </Text>
             <Pressable
               style={styles.modalBtn}
-              onPress={() => setDailyReward(null)}
+              onPress={dismissDailyReward}
             >
               <Text style={styles.modalBtnText}>{t("home.dailyRewardOk")}</Text>
             </Pressable>
@@ -228,23 +196,33 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
+    minHeight: 0,
+  },
+  topBar: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 8,
+    zIndex: 10,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 28,
+    paddingTop: 8,
+    paddingBottom: 16,
+    alignItems: "center",
+    justifyContent: "space-evenly",
+    gap: 16,
   },
   bannerSlot: {
     width: "100%",
     alignItems: "center",
     backgroundColor: "#0f172a",
-  },
-  topBar: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    zIndex: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
   coinBadge: {
     flexDirection: "row",
@@ -267,29 +245,21 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginTop: 72,
+    gap: 8,
   },
   logo: {
-    width: 140,
-    height: 140,
-    borderRadius: 32,
-    marginBottom: 16,
-  },
-  brand: {
-    fontSize: 48,
-    fontFamily: "Inter_700Bold",
-    color: "#f8fafc",
-    letterSpacing: 2,
+    width: 96,
+    height: 96,
+    borderRadius: 24,
   },
   tagline: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: "#64748b",
-    marginTop: 6,
     textAlign: "center",
+    paddingHorizontal: 8,
   },
   nameChip: {
-    marginTop: 14,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -312,53 +282,52 @@ const styles = StyleSheet.create({
   },
   buttonList: {
     width: "100%",
-    gap: 16,
-    marginTop: 20,
+    gap: 12,
   },
   modeButton: {
     width: "100%",
-    borderRadius: 20,
-    paddingVertical: 22,
-    paddingHorizontal: 24,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   modeButtonPressed: {
     opacity: 0.8,
     transform: [{ scale: 0.97 }],
   },
   modeEmoji: {
-    fontSize: 28,
-    width: 40,
+    fontSize: 24,
+    width: 36,
     textAlign: "center",
   },
   modeLabel: {
     flex: 1,
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: "Inter_700Bold",
     color: "#fff",
     letterSpacing: 0.5,
   },
   modeArrow: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
     color: "rgba(255,255,255,0.6)",
   },
   footer: {
-    marginBottom: 12,
     alignItems: "center",
-    gap: 12,
+    gap: 10,
+    paddingTop: 4,
   },
   footerBtn: {
     backgroundColor: "#1e293b",
     borderRadius: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 20,
     borderWidth: 1,
     borderColor: "#334155",
