@@ -5,7 +5,7 @@ const AD_UNIT_ID =
 /** Google sample banner — replace via EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID in AdMob */
 const BANNER_AD_UNIT_ID =
   process.env.EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID ??
-  "ca-app-pub-3940256099942544/6300978111";
+  "ca-app-pub-5692796466438151/1879967539";
 
 export function getBannerAdUnitId(): string {
   return BANNER_AD_UNIT_ID;

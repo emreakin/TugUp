@@ -18,6 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { getApiBase, getApiHeaders } from "@/lib/api";
 
 interface Matchup {
@@ -207,7 +208,6 @@ export default function OnlineScreen() {
         styles.outerContainer,
         {
           paddingTop: Platform.OS === "web" ? 0 : insets.top,
-          paddingBottom: Platform.OS === "web" ? 0 : insets.bottom,
         },
       ]}
     >
@@ -397,6 +397,8 @@ export default function OnlineScreen() {
           </View>
         </View>
       </Modal>
+
+      <SubtleBannerSlot />
     </View>
   );
 }

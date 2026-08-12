@@ -20,6 +20,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, JOKER_COIN_COST, type CoinBalance } from "@/lib/api";
 
@@ -945,7 +946,7 @@ export default function QuickGameScreen() {
       <View
         style={[
           styles.container,
-          { paddingTop: topInset + 8, paddingBottom: bottomInset + 8 },
+          { paddingTop: topInset + 8 },
         ]}
       >
         <StatusBar barStyle="light-content" />
@@ -1273,6 +1274,8 @@ export default function QuickGameScreen() {
             </View>
           </View>
         </Modal>
+
+        <SubtleBannerSlot />
       </View>
     );
   }

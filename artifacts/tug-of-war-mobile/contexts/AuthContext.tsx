@@ -17,6 +17,8 @@ import {
   cacheCoinBalance,
   claimDailyLoginOnce,
   COIN_BALANCE_KEY,
+  hasSeenDailyRewardToday,
+  markDailyRewardSeen,
   readCachedCoinBalance,
 } from "@/lib/coinsClient";
 
@@ -72,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await claimDailyLoginOnce(authToken);
       setCoinBalance(result.balance);
       await cacheCoinBalance(result.balance);
-      if (result.claimed) {
+      if (result.claimed && !(await hasSeenDailyRewardToday())) {
         setDailyReward((prev) => prev ?? { reward: result.reward, streak: result.streak });
       }
     } catch {
@@ -143,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const dismissDailyReward = useCallback(() => {
     setDailyReward(null);
+    markDailyRewardSeen().catch(() => {});
   }, []);
 
   // 1) Hydrate UI instantly from disk  2) Then warm session + claim in background

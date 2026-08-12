@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getBannerAdUnitId } from "@/native/ad-helper";
 
@@ -27,10 +28,10 @@ function loadBannerModule(): BannerModule | null {
 }
 
 /**
- * Subtle home-screen banner: anchored adaptive size, full-width at the bottom.
- * Collapsed until loaded; fully hidden if load fails (no empty ad chrome).
+ * Anchored adaptive banner for idle screens (home, pickers, waiting).
+ * Collapsed until loaded; hidden if load fails.
  */
-export function HomeBannerAd() {
+export function SubtleBannerAd() {
   const unitId = getBannerAdUnitId();
   const ads = useMemo(() => loadBannerModule(), []);
   const [visible, setVisible] = useState(false);
@@ -51,6 +52,24 @@ export function HomeBannerAd() {
   );
 }
 
+/** Bottom-of-screen slot with safe-area padding */
+export function SubtleBannerSlot() {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={[
+        styles.slot,
+        { paddingBottom: Platform.OS === "web" ? 0 : Math.max(insets.bottom, 4) },
+      ]}
+    >
+      <SubtleBannerAd />
+    </View>
+  );
+}
+
+/** @deprecated use SubtleBannerAd */
+export const HomeBannerAd = SubtleBannerAd;
+
 const styles = StyleSheet.create({
   wrap: {
     width: "100%",
@@ -62,5 +81,10 @@ const styles = StyleSheet.create({
   collapsed: {
     height: 0,
     opacity: 0,
+  },
+  slot: {
+    width: "100%",
+    alignItems: "center",
+    backgroundColor: "#0f172a",
   },
 });

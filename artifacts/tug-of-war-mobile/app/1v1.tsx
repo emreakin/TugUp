@@ -20,6 +20,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, getApiHeaders, getApiUrl } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
@@ -534,7 +535,7 @@ export default function OneVsOneScreen() {
   // ── Mode select screen ─────────────────────────────────────────
   if (phase === "mode_select") {
     return (
-      <View style={[styles.container, { paddingTop: topInset, paddingBottom: bottomInset }]}>
+      <View style={[styles.container, { paddingTop: topInset }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
@@ -572,6 +573,7 @@ export default function OneVsOneScreen() {
             </Pressable>
           ) : null}
         </View>
+        <SubtleBannerSlot />
       </View>
     );
   }
@@ -801,6 +803,7 @@ export default function OneVsOneScreen() {
             </Text>
           </View>
         )}
+        {phase === "waiting" ? <SubtleBannerSlot /> : null}
       </View>
     );
   }

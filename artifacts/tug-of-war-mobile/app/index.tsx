@@ -1,5 +1,5 @@
 import { EditNameModal } from "@/components/EditNameModal";
-import { HomeBannerAd } from "@/components/HomeBannerAd";
+import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { useAuth } from "@/contexts/AuthContext";
 import { FRIENDS_ENABLED } from "@/lib/features";
@@ -147,14 +147,7 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
-      <View
-        style={[
-          styles.bannerSlot,
-          { paddingBottom: Platform.OS === "web" ? 0 : Math.max(insets.bottom, 4) },
-        ]}
-      >
-        <HomeBannerAd />
-      </View>
+      <SubtleBannerSlot />
 
       <EditNameModal
         visible={editNameVisible}

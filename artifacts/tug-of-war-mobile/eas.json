@@ -18,7 +18,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ADMOB_REWARDED_UNIT_ID": "ca-app-pub-5692796466438151/4906976811",
-        "EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID": "ca-app-pub-3940256099942544/6300978111",
+        "EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID": "ca-app-pub-5692796466438151/1879967539",
         "EXPO_PUBLIC_API_BASE": "https://tugup-api.onrender.com"
       }
     },
@@ -32,7 +32,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ADMOB_REWARDED_UNIT_ID": "ca-app-pub-5692796466438151/4906976811",
-        "EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID": "ca-app-pub-3940256099942544/6300978111",
+        "EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID": "ca-app-pub-5692796466438151/1879967539",
         "EXPO_PUBLIC_API_BASE": "https://tugup-api.onrender.com"
       }
     },
@@ -45,7 +45,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ADMOB_REWARDED_UNIT_ID": "ca-app-pub-5692796466438151/4906976811",
-        "EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID": "ca-app-pub-3940256099942544/6300978111",
+        "EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID": "ca-app-pub-5692796466438151/1879967539",
         "EXPO_PUBLIC_API_BASE": "https://tugup-api.onrender.com"
       }
     }
