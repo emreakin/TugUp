@@ -54,7 +54,27 @@ function issueSession(user: typeof usersTable.$inferSelect) {
   };
 }
 
-// POST /api/auth/guest — create or resume guest session
+async function findUserById(userId: string) {
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+async function findUserByPlayerToken(playerToken: string) {
+  const token = playerToken.trim();
+  if (!token || token.length < 16 || token.length > 128) return null;
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.playerToken, token))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+// POST /api/auth/guest — resume existing guest, or create only if unknown
 router.post("/guest", async (req, res) => {
   const displayName =
     typeof req.body.displayName === "string" && req.body.displayName.trim()
@@ -63,22 +83,25 @@ router.post("/guest", async (req, res) => {
 
   const resumeToken =
     typeof req.body.resumeToken === "string" ? req.body.resumeToken : null;
-
-  if (resumeToken) {
-    const payload = verifyAuthToken(resumeToken);
-    if (payload) {
-      const rows = await db
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.id, payload.userId))
-        .limit(1);
-      if (rows.length > 0) {
-        return res.json(issueSession(rows[0]));
-      }
-    }
-  }
+  const playerToken =
+    typeof req.body.playerToken === "string" ? req.body.playerToken : null;
 
   try {
+    if (resumeToken) {
+      const payload =
+        verifyAuthToken(resumeToken) ??
+        verifyAuthToken(resumeToken, { ignoreExpiry: true });
+      if (payload) {
+        const existing = await findUserById(payload.userId);
+        if (existing) return res.json(issueSession(existing));
+      }
+    }
+
+    if (playerToken) {
+      const existing = await findUserByPlayerToken(playerToken);
+      if (existing) return res.json(issueSession(existing));
+    }
+
     const user = await createGuestUser(displayName);
     logger.info({ userId: user.id, friendCode: user.friendCode }, "Guest user created");
     return res.json(issueSession(user));

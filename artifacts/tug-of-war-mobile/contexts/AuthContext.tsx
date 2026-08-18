@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -56,6 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [coinBalance, setCoinBalance] = useState(0);
   const [dailyReward, setDailyReward] = useState<DailyRewardPopup | null>(null);
 
+  const sessionLock = useRef<Promise<AuthSession> | null>(null);
+
   const applySession = useCallback(async (session: AuthSession) => {
     setUser(session.user);
     setToken(session.token);
@@ -84,22 +87,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const ensureSession = useCallback(
     async (displayName?: string) => {
-      const savedToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      const savedName =
-        displayName ??
-        (await AsyncStorage.getItem(DISPLAY_NAME_KEY)) ??
-        "Oyuncu";
+      if (sessionLock.current) return sessionLock.current;
 
-      const session = await apiFetch<AuthSession>("/api/auth/guest", {
-        method: "POST",
-        body: JSON.stringify({
-          displayName: savedName,
-          resumeToken: savedToken,
-        }),
-      });
+      const run = (async () => {
+        const [savedToken, savedPlayerToken, storedName] = await Promise.all([
+          AsyncStorage.getItem(AUTH_TOKEN_KEY),
+          AsyncStorage.getItem(PLAYER_TOKEN_KEY),
+          AsyncStorage.getItem(DISPLAY_NAME_KEY),
+        ]);
+        const savedName = displayName ?? storedName ?? "Oyuncu";
 
-      await applySession(session);
-      return session;
+        const session = await apiFetch<AuthSession>("/api/auth/guest", {
+          method: "POST",
+          body: JSON.stringify({
+            displayName: savedName,
+            resumeToken: savedToken,
+            playerToken: savedPlayerToken,
+          }),
+        });
+
+        await applySession(session);
+        return session;
+      })();
+
+      sessionLock.current = run;
+      try {
+        return await run;
+      } finally {
+        sessionLock.current = null;
+      }
     },
     [applySession],
   );
@@ -109,17 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const trimmed = displayName.trim().slice(0, 24);
       if (!trimmed) throw new Error("empty name");
 
-      let authToken = token;
-      if (!authToken) {
-        const session = await ensureSession(trimmed);
-        authToken = session.token;
-      }
+      // Resume the existing guest first — never create a second row for a rename.
+      const session = await ensureSession();
 
       const updated = await apiFetch<PublicUser & { playerToken: string }>(
         "/api/auth/me",
         {
           method: "PATCH",
-          token: authToken,
+          token: session.token,
           body: JSON.stringify({ displayName: trimmed }),
         },
       );
@@ -135,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         [USER_ID_KEY, updated.id],
       ]);
     },
-    [token, ensureSession],
+    [ensureSession],
   );
 
   const refreshCoins = useCallback(async () => {

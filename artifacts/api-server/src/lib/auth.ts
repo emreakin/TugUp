@@ -2,7 +2,7 @@ import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import type { Request, Response, NextFunction } from "express";
 import { reqT } from "./i18n";
 
-const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year — guest identity should persist
 
 function getSecret(): string {
   return process.env.JWT_SECRET ?? "tugup-dev-secret-change-in-production";
@@ -15,7 +15,10 @@ export function signAuthToken(userId: string): string {
   return Buffer.from(`${payload}.${sig}`).toString("base64url");
 }
 
-export function verifyAuthToken(token: string): { userId: string } | null {
+export function verifyAuthToken(
+  token: string,
+  options?: { ignoreExpiry?: boolean },
+): { userId: string } | null {
   try {
     const decoded = Buffer.from(token, "base64url").toString("utf8");
     const lastDot = decoded.lastIndexOf(".");
@@ -33,7 +36,7 @@ export function verifyAuthToken(token: string): { userId: string } | null {
     const userId = payload.slice(0, dot);
     const issuedAt = Number(payload.slice(dot + 1));
     if (!userId || Number.isNaN(issuedAt)) return null;
-    if (Date.now() - issuedAt > TOKEN_TTL_MS) return null;
+    if (!options?.ignoreExpiry && Date.now() - issuedAt > TOKEN_TTL_MS) return null;
     return { userId };
   } catch {
     return null;

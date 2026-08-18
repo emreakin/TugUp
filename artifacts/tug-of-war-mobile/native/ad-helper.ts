@@ -14,7 +14,14 @@ export function getBannerAdUnitId(): string {
 export async function initMobileAds(): Promise<void> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { default: mobileAds } = require("react-native-google-mobile-ads");
+    const ads = require("react-native-google-mobile-ads");
+    const mobileAds = ads.default;
+    const { MaxAdContentRating, AgeRestrictedTreatment } = ads;
+    // App is 18+ only — do not tag as child-directed (Families Policy).
+    await mobileAds().setRequestConfiguration({
+      maxAdContentRating: MaxAdContentRating.MA,
+      ageRestrictedTreatment: AgeRestrictedTreatment.UNSPECIFIED,
+    });
     await mobileAds().initialize();
   } catch {
     // Native module absent (Expo Go) — ignore

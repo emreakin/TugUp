@@ -142,7 +142,7 @@ export default function HomeScreen() {
                 <Text style={styles.footerBtnText}>👥 {t("home.friends")}</Text>
               </Pressable>
             ) : null}
-            <Text style={styles.footerText}>v0.1.3 · TugUp</Text>
+            <Text style={styles.footerText}>v0.1.4 · TugUp</Text>
           </View>
         </ScrollView>
       </View>
