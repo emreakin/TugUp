@@ -21,6 +21,8 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SubtleBannerSlot } from "@/components/HomeBannerAd";
+import { AppIcon, TrophyIcon } from "@/components/AppIcon";
+import { IconSlot } from "@/components/IconSlot";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, getApiHeaders, getApiUrl } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
@@ -545,7 +547,7 @@ export default function OneVsOneScreen() {
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.nameInputContent}>
-          <Text style={styles.nameInputEmoji}>👥</Text>
+          <IconSlot name="people-outline" size={32} color="#94a3b8" style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }} />
           <Text style={styles.nameInputTitle}>{t("oneVsOne.modeSelectTitle")}</Text>
           <Text style={styles.nameInputSubtitle}>{t("oneVsOne.modeSelectSubtitle")}</Text>
 
@@ -553,7 +555,7 @@ export default function OneVsOneScreen() {
             style={({ pressed }) => [styles.modeCard, pressed && styles.modeCardPressed]}
             onPress={() => { setMatchMode("random"); setPhase("name_input"); }}
           >
-            <Text style={styles.modeCardEmoji}>🎲</Text>
+            <IconSlot name="dice-outline" size={22} color="#3b82f6" backgroundColor="#3b82f622" />
             <View style={styles.modeCardText}>
               <Text style={styles.modeCardTitle}>{t("oneVsOne.randomMatchTitle")}</Text>
               <Text style={styles.modeCardDesc}>{t("oneVsOne.randomMatchDesc")}</Text>
@@ -565,7 +567,7 @@ export default function OneVsOneScreen() {
               style={({ pressed }) => [styles.modeCard, styles.modeCardInvite, pressed && styles.modeCardPressed]}
               onPress={() => { setMatchMode("invite"); setPhase("name_input"); }}
             >
-              <Text style={styles.modeCardEmoji}>🔗</Text>
+              <IconSlot name="link-outline" size={22} color="#10b981" backgroundColor="#10b98122" />
               <View style={styles.modeCardText}>
                 <Text style={styles.modeCardTitle}>{t("oneVsOne.inviteFriendTitle")}</Text>
                 <Text style={styles.modeCardDesc}>{t("oneVsOne.inviteFriendDesc")}</Text>
@@ -594,7 +596,7 @@ export default function OneVsOneScreen() {
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.nameInputContent}>
-          <Text style={styles.nameInputEmoji}>🎮</Text>
+          <IconSlot name="game-controller-outline" size={32} color="#94a3b8" style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }} />
           <Text style={styles.nameInputTitle}>{t("oneVsOne.title")}</Text>
           <Text style={styles.nameInputSubtitle}>
             {matchMode === "invite"
@@ -693,7 +695,7 @@ export default function OneVsOneScreen() {
         </View>
         {errorMsg ? (
           <>
-            <Text style={styles.errorEmoji}>⚠️</Text>
+            <AppIcon name="warning-outline" size={48} color="#f59e0b" style={{ marginBottom: 12 }} />
             <Text style={styles.errorText}>{errorMsg}</Text>
             <Pressable style={styles.retryBtn} onPress={connect}>
               <Text style={styles.retryBtnText}>{t("oneVsOne.retry")}</Text>
@@ -727,7 +729,7 @@ export default function OneVsOneScreen() {
         {/* Matchup badge */}
         {matchup && (
           <View style={styles.matchupBadge}>
-            <Text style={styles.matchupEmoji}>{matchup.emoji}</Text>
+            <IconSlot name="git-compare-outline" size={18} color="#94a3b8" backgroundColor="#1e293b" />
             <Text style={[styles.matchupTeam, { color: leftColor }]}>{matchup.leftTeam}</Text>
             <Text style={styles.matchupVs}>{t("common.vs")}</Text>
             <Text style={[styles.matchupTeam, { color: rightColor }]}>{matchup.rightTeam}</Text>
@@ -929,7 +931,9 @@ export default function OneVsOneScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={[styles.modalGlow, { backgroundColor: (isWinner ? myColor : opponentColor) + "33" }]} />
-            <Text style={styles.modalEmoji}>{isWinner ? "🏆" : "😢"}</Text>
+            <View style={{ marginBottom: 8 }}>
+              <TrophyIcon size={56} color={isWinner ? myColor : "#64748b"} />
+            </View>
             <Text style={[styles.modalTitle, { color: isWinner ? myColor : opponentColor }]}>
               {isWinner ? t("oneVsOne.youWon") : t("oneVsOne.youLost")}
             </Text>

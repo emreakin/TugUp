@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getApiBase, getApiHeaders } from "@/lib/api";
+import { AppIcon, CrownIcon, TrophyIcon } from "@/components/AppIcon";
 
 // AdMob is loaded dynamically on native only — see ad-helper.native.ts
 
@@ -111,7 +112,6 @@ export default function GameScreen() {
   const right = params.right ?? t("game.defaultRight");
   const leftColor = params.leftColor ?? "#ef4444";
   const rightColor = params.rightColor ?? "#3b82f6";
-  const emoji = params.emoji ?? "🏆";
   const leftWins = parseInt(params.leftWins ?? "0", 10) || 0;
   const rightWins = parseInt(params.rightWins ?? "0", 10) || 0;
   const leftLeads = leftWins > rightWins;
@@ -418,19 +418,27 @@ export default function GameScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>← {t("common.mainMenu")}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>{emoji}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {left} {t("common.vs")} {right}
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
       {/* Team labels */}
       <View style={styles.teamRow}>
-        <Text style={[styles.teamLabel, { color: leftColor }]} numberOfLines={1}>
-          {leftLeads ? "👑 " : ""}{left}
-        </Text>
+        <View style={styles.teamLabelWrap}>
+          {leftLeads ? <CrownIcon size={12} /> : null}
+          <Text style={[styles.teamLabel, { color: leftColor }]} numberOfLines={1}>
+            {left}
+          </Text>
+        </View>
         <Text style={styles.vsLabel}>{t("common.vs")}</Text>
-        <Text style={[styles.teamLabel, { color: rightColor }]} numberOfLines={1}>
-          {right}{rightLeads ? " 👑" : ""}
-        </Text>
+        <View style={styles.teamLabelWrap}>
+          <Text style={[styles.teamLabel, { color: rightColor }]} numberOfLines={1}>
+            {right}
+          </Text>
+          {rightLeads ? <CrownIcon size={12} /> : null}
+        </View>
       </View>
 
       {/* Click counts */}
@@ -560,7 +568,7 @@ export default function GameScreen() {
             >
               <Text style={[styles.pullBtnText, { color: leftColor }]}>
                 {cooldownSecs > 0
-                  ? `⏳ ${Math.floor(cooldownSecs / 60)}:${String(cooldownSecs % 60).padStart(2, "0")}`
+                  ? `${Math.floor(cooldownSecs / 60)}:${String(cooldownSecs % 60).padStart(2, "0")}`
                   : t("game.pullLeft")}
               </Text>
             </Pressable>
@@ -579,7 +587,7 @@ export default function GameScreen() {
             >
               <Text style={[styles.pullBtnText, { color: rightColor }]}>
                 {cooldownSecs > 0
-                  ? `${Math.floor(cooldownSecs / 60)}:${String(cooldownSecs % 60).padStart(2, "0")} ⏳`
+                  ? `${Math.floor(cooldownSecs / 60)}:${String(cooldownSecs % 60).padStart(2, "0")}`
                   : t("game.pullRight")}
               </Text>
             </Pressable>
@@ -607,12 +615,9 @@ export default function GameScreen() {
       <Modal visible={gameState !== "playing"} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { borderColor: winnerColor }]}>
-            <Text style={styles.modalTrophy}>🏆</Text>
+            <TrophyIcon size={56} color={winnerColor} />
             <Text style={[styles.modalWinner, { color: winnerColor }]}>{winner}</Text>
             <Text style={styles.modalKazandi}>{t("game.won")}</Text>
-            <Text style={styles.modalConfetti}>
-              {gameState === "left_wins" ? "🎉" : "🎊"}
-            </Text>
             <View style={styles.modalButtons}>
               <Pressable
                 style={[styles.modalBtn, styles.modalBtnPrimary]}
@@ -681,6 +686,13 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     letterSpacing: 0.5,
+  },
+  teamLabelWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
   },
   vsLabel: {
     color: "#475569",

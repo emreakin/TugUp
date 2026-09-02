@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { theme } from "@/constants/theme";
 import { getBannerAdUnitId } from "@/native/ad-helper";
 
 type BannerModule = {
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0f172a",
+    backgroundColor: theme.bg,
     overflow: "hidden",
   },
   collapsed: {
@@ -85,6 +86,6 @@ const styles = StyleSheet.create({
   slot: {
     width: "100%",
     alignItems: "center",
-    backgroundColor: "#0f172a",
+    backgroundColor: theme.bg,
   },
 });

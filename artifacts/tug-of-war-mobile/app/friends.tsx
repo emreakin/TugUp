@@ -20,6 +20,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, type FriendSummary, REFERRAL_REWARD_NEW_USER, REFERRAL_REWARD_RETURNING_USER } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
 import { EditNameModal } from "@/components/EditNameModal";
+import { AppIcon } from "@/components/AppIcon";
+import { IconSlot } from "@/components/IconSlot";
 
 export default function FriendsScreen() {
   const insets = useSafeAreaInsets();
@@ -131,7 +133,9 @@ export default function FriendsScreen() {
             accessibilityLabel={t("home.tapToEditName")}
           >
             <Text style={styles.profileName}>{user?.displayName ?? t("common.player")}</Text>
-            <Text style={styles.profileEdit}>✎</Text>
+            <View style={styles.profileEdit}>
+              <AppIcon name="pencil" size={14} color="#fbbf24" />
+            </View>
           </Pressable>
           <Text style={styles.profileCode}>{t("friends.code", { code: user?.friendCode ?? "—" })}</Text>
         </View>
@@ -164,7 +168,13 @@ export default function FriendsScreen() {
           <ActivityIndicator color="#3b82f6" style={{ marginTop: 24 }} />
         ) : friends.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyEmoji}>👋</Text>
+            <IconSlot
+              name="people-outline"
+              size={28}
+              color="#94a3b8"
+              backgroundColor="#1e293b"
+              style={{ width: 64, height: 64, borderRadius: 32, marginBottom: 12 }}
+            />
             <Text style={styles.emptyTitle}>{t("friends.emptyTitle")}</Text>
             <Text style={styles.emptyText}>{t("friends.emptyText")}</Text>
           </View>
@@ -232,7 +242,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   profileName: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 22 },
-  profileEdit: { color: "#fbbf24", fontFamily: "Inter_700Bold", fontSize: 16 },
+  profileEdit: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#334155",
+  },
   profileCode: { color: "#94a3b8", fontFamily: "Inter_600SemiBold", fontSize: 14, marginTop: 4 },
   inviteBtn: {
     backgroundColor: "#3b82f6",

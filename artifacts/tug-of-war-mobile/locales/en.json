@@ -1,10 +1,13 @@
 {
   "home": {
-    "tagline": "Decide the world's greatest strength!",
+    "tagline": "Pull. Win. Prove it.",
     "modes": {
       "quickGame": "Quick Game",
+      "quickGameHint": "Levels · Solo",
       "oneVsOne": "1v1",
-      "online": "Online"
+      "oneVsOneHint": "Friend or match",
+      "online": "Online",
+      "onlineHint": "Vote · Who’s stronger?"
     },
     "friends": "Friends",
     "settings": "Settings",
@@ -38,14 +41,14 @@
     "player": "Player",
     "opponent": "Opponent",
     "you": "You",
-    "ready": "✓ Ready",
+    "ready": "Ready",
     "usernamePlaceholder": "Username",
     "onboarding": {
       "skip": "Skip",
       "next": "Next",
       "start": "Let's Go!"
     },
-    "pull": "💪 PULL!",
+    "pull": "PULL!",
     "secondsShort": "s",
     "homePage": "Home",
     "requestFailed": "Request failed."
@@ -64,13 +67,13 @@
       "connectionError": "Connection problem."
     },
     "onboarding": {
-      "step1Title": "🌍 Online Voting",
+      "step1Title": "Online Voting",
       "step1Text": "This is the heart of TugUp! Pick the world's biggest rivalries (Galatasaray vs Fenerbahce, Android vs iOS...) and pull the rope for your side to boost the score.",
-      "step2Title": "🎩 How to Play",
+      "step2Title": "How to Play",
       "step2Text": "Choose a matchup and tap the button matching your side's color to pull the rope. Each vote shifts the rope toward that side. Don't forget—the other side is voting too!",
-      "step3Title": "⏳ Cooldown System",
+      "step3Title": "Cooldown System",
       "step3Text": "After each vote, a short cooldown starts. Watch a rewarded ad to skip the wait and vote again.",
-      "step4Title": "🗓 Weekly Reset",
+      "step4Title": "Weekly Reset",
       "step4Text": "Every Monday, all scores reset. The side with the most votes that week wins and earns a cumulative victory point."
     }
   },
@@ -86,8 +89,8 @@
     "inviteFriendDesc": "Share a link and let your friend join",
     "nameSubtitleInvite": "Enter your name to share the invite link",
     "nameSubtitleRandom": "Enter your name before joining the match",
-    "createInvite": "Create Invite 🔗",
-    "start": "Start 💪",
+    "createInvite": "Create Invite",
+    "start": "Start",
     "connecting": "Connecting to server…",
     "retry": "Try Again",
     "serverError": "Server error.",
@@ -98,21 +101,21 @@
     "waitingInviteFooter": "The game starts when your friend opens the link. Stay on this screen!",
     "waitingMatchFooter": "Searching for a match… Stay on this screen!",
     "remaining": "LEFT",
-    "pullLeft": "💪 PULL!",
-    "pullRight": "PULL! 💪",
+    "pullLeft": "PULL!",
+    "pullRight": "PULL!",
     "youWon": "YOU WON!",
     "youLost": "YOU LOST",
     "winMessage": "Congrats {{name}}, victory is yours against {{opponent}}!",
     "loseMessage": "{{opponent}} won this match. Come back stronger next time!",
-    "playAgain": "🔄 Play Again",
+    "playAgain": "Play Again",
     "onboarding": {
-      "step1Title": "🎡 1v1 Real-Time Play",
+      "step1Title": "1v1 Real-Time Play",
       "step1Text": "Match with another player and pull the rope head-to-head! Two characters, one rope, one goal: drag your opponent to your side.",
-      "step2Title": "🧩 Easy to Play",
+      "step2Title": "Easy to Play",
       "step2Text": "Tap the button at the bottom quickly. Each tap moves the rope toward your side. But watch out—your opponent is doing the same!",
-      "step3Title": "🎯 How to Win",
+      "step3Title": "How to Win",
       "step3Text": "You need to pull the rope from the center line all the way to the other side. Watch the progress bar—can you beat your opponent?",
-      "step4Title": "✅ Waiting for a Match",
+      "step4Title": "Waiting for a Match",
       "step4Text": "After you enter your name, the game automatically matches you with an opponent. Wait on this screen until they arrive. Ready? Let's go!"
     }
   },
@@ -150,85 +153,130 @@
     }
   },
   "quickGame": {
-    "title": "⚡ Quick Game",
+    "title": "Quick Game",
     "subtitle": "Pick a level and start pulling!",
-    "loading": "⏳ Loading…",
-    "earnJoker": "🎁 Earn Joker (+1)",
-    "bestTime": "🥇 {{seconds}} s",
+    "loading": "Loading…",
+    "earnJoker": "Earn Joker (+1)",
+    "bestTime": "{{seconds}} s",
     "jokerFullTitle": "Joker Storage Full",
     "jokerFullMessage": "All jokers are already at the maximum limit (3).",
     "adFailedTitle": "Ad failed to load",
     "adFailedMessage": "Please try again.",
     "earnMethodTitle": "How do you want to earn?",
     "earnMethodSubtitle": "Choose a method",
-    "earnByAd": "🎬 Watch Ad",
-    "earnByCoins": "🪙 Buy for {{cost}} Coins",
-    "earnByCoinsDisabled": "🪙 Not enough coins ({{balance}}/{{cost}})",
+    "earnByAd": "Watch Ad",
+    "earnByCoins": "Buy for {{cost}} Coins",
+    "earnByCoinsDisabled": "Not enough coins ({{balance}}/{{cost}})",
     "coinPurchaseFailed": "Coin purchase failed.",
     "jokerEarnTitle": "Earn a Joker!",
     "jokerEarnSubtitle": "Which joker do you want to add?",
-    "timeJokerPicker": "⏳ +2 s Joker",
-    "bombJokerPicker": "💥 +25 Joker",
-    "turboJokerPicker": "⚡ Turbo Power",
+    "timeJokerPicker": "+2 s Joker",
+    "bombJokerPicker": "+25 Joker",
+    "turboJokerPicker": "Turbo Power",
     "full": "(Full)",
     "jokers": "JOKERS",
-    "timeJokerDone": "⏳ Used up",
-    "timeJoker": "⏳ +2 s ({{count}})",
-    "bombLocked": "💥 Unlocks at Lv8",
-    "bombDone": "💥 Used up",
-    "bombRoundLimit": "💥 Round limit",
-    "bombJoker": "💥 +25% ({{remaining}})",
-    "turboLocked": "⚡ Unlocks at Lv5",
-    "turboDone": "⚡ Used up",
-    "turboJoker": "⚡ Turbo ({{count}})",
-    "turboActive": "⚡ {{seconds}}s",
+    "timeJokerDone": "Used up",
+    "timeJoker": "+2 s ({{count}})",
+    "bombLocked": "Unlocks at Lv8",
+    "bombDone": "Used up",
+    "bombRoundLimit": "Round limit",
+    "bombJoker": "+25% ({{remaining}})",
+    "turboLocked": "Unlocks at Lv5",
+    "turboDone": "Used up",
+    "turboJoker": "Turbo ({{count}})",
+    "turboActive": "{{seconds}}s",
     "pulled": "PULLED",
     "youWon": "YOU WON!",
     "timeUp": "TIME'S UP!",
     "winSubtitle": "{{name}} crossed the line!",
     "loseSubtitle": "{{name}} didn't make it to the line.",
-    "newRecord": "🥇 NEW RECORD! Remaining: {{seconds}} s",
-    "newRecordLastSecond": "🥇 NEW RECORD! Finished in the last second!",
-    "playAgain": "🔄 Play Again",
+    "newRecord": "NEW RECORD! Remaining: {{seconds}} s",
+    "newRecordLastSecond": "NEW RECORD! Finished in the last second!",
+    "playAgain": "Play Again",
     "nextLevel": "Next: {{name}}",
-    "allComplete": "🎉 You Beat All Levels!",
+    "allComplete": "You Beat All Levels!",
     "levelsBtn": "Levels",
     "tutorial": {
       "title": "Welcome to Quick Game!",
       "step1": "Pick a level and tap the <bold>“PULL!”</bold> button quickly to drag the object to your side.",
       "step2": "Reach your line before time runs out. The more time left when you win, the better your record!",
       "step3": "When you pull, a force pushes the object back. Every 3-5 seconds it can snap back 10 units!",
-      "step4": "Use jokers for an edge: add <time>⏳ +2 s</time>, move <bomb>💥 +25%</bomb> toward your side, or activate <turbo>⚡ Turbo Power</turbo> for 3 seconds of 2x pull strength. Watch ads to earn jokers.",
+      "step4": "Use jokers for an edge: add <time> +2 s</time>, move <bomb> +25%</bomb> toward your side, or activate <turbo> Turbo Power</turbo> for 3 seconds of 2x pull strength. Watch ads to earn jokers.",
       "step5": "Beat each level to unlock the next. 15 different objects are waiting for you!",
-      "start": "Got it, let's go! 💪"
+      "start": "Got it, let's go!"
     },
     "levelList": {
-      "1": { "name": "Bowling Ball", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "2": { "name": "Couch", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "3": { "name": "Washing Machine", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "4": { "name": "Refrigerator", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "5": { "name": "ATV", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "6": { "name": "Bull", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "7": { "name": "Car", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "8": { "name": "SUV", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "9": { "name": "Pickup Truck", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "10": { "name": "Elephant", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "11": { "name": "T-Rex", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "12": { "name": "Whale", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "13": { "name": "Bus", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "14": { "name": "Yacht", "description": "~{{weight}} kg · {{seconds}} seconds" },
-      "15": { "name": "Crane", "description": "~{{weight}} kg · {{seconds}} seconds" }
+      "1": {
+        "name": "Bowling Ball",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "2": {
+        "name": "Couch",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "3": {
+        "name": "Washing Machine",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "4": {
+        "name": "Refrigerator",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "5": {
+        "name": "ATV",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "6": {
+        "name": "Bull",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "7": {
+        "name": "Car",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "8": {
+        "name": "SUV",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "9": {
+        "name": "Pickup Truck",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "10": {
+        "name": "Elephant",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "11": {
+        "name": "T-Rex",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "12": {
+        "name": "Whale",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "13": {
+        "name": "Bus",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "14": {
+        "name": "Yacht",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      },
+      "15": {
+        "name": "Crane",
+        "description": "~{{weight}} kg · {{seconds}} seconds"
+      }
     }
   },
   "game": {
     "remaining": "LEFT",
     "timeRemaining": "TIME LEFT",
-    "pullLeft": "💪 PULL!",
-    "pullRight": "PULL! 💪",
-    "adLoading": "⏳ Loading video…",
-    "watchAd": "🎬 Watch Ad ({{remaining}} left) → 💪 Pull Now",
+    "pullLeft": "PULL!",
+    "pullRight": "PULL!",
+    "adLoading": "Loading video…",
+    "watchAd": "Watch Ad ({{remaining}} left) → Pull Now",
     "won": "Wins!",
-    "playAgain": "Play Again 🔄",
+    "playAgain": "Play Again",
     "menu": "Menu ←",
     "dailyLimitTitle": "Daily Limit Reached",
     "dailyLimitMessage": "You've used all 3 video rewards today. Try again tomorrow!",

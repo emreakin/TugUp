@@ -21,11 +21,34 @@ import { runOnJS } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SubtleBannerSlot } from "@/components/HomeBannerAd";
+import { AppIcon, TrophyIcon } from "@/components/AppIcon";
+import { IconSlot } from "@/components/IconSlot";
+import { JokerIcon } from "@/components/JokerIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, JOKER_COIN_COST, type CoinBalance } from "@/lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CHAR_WIDTH = 100;
+// 1.0 = avatar yüksekliği (~1.7 m insan). Cisim görselleri buna göre ölçeklenir.
+const OBJECT_DISPLAY_SCALES: Record<number, number> = {
+  1: 0.42, // bowling topu
+  2: 0.58, // kanepe
+  3: 0.62, // çamaşır makinesi
+  4: 1.0, // buzdolabı
+  5: 1.0, // ATV
+  6: 0.95, // boğa
+  7: 1.0, // araba — insan boyuna yakın
+  8: 1.08, // SUV
+  9: 1.28, // kamyonet — arabadan belirgin büyük
+  10: 1.55, // fil
+  11: 1.85, // T-Rex
+  12: 1.65, // balina
+  13: 2.0, // otobüs
+  14: 2.15, // yat
+  15: 2.45, // vinç
+};
+// İp, cisim PNG'sindeki şeffaf kenarı kapatmak için hafif bindirme
+const OBJECT_ROPE_OVERLAP = 8;
 const ROPE_PAD = 4;
 const WINDOW_WIDTH = Dimensions.get("window").width;
 const MAX_TRANSLATION = WINDOW_WIDTH / 2 - ROPE_PAD - CHAR_WIDTH / 2;
@@ -63,12 +86,13 @@ interface Level {
   driftPerSec: number;
   accentColor: string;
   description: string;
+  displayScale: number;
 }
 
 interface LevelConfig {
   id: number;
   emoji: string;
-  image?: any;
+  image: number;
   weight: number;
   timeLimit: number;
   unitPerTap: number;
@@ -76,10 +100,15 @@ interface LevelConfig {
   accentColor: string;
 }
 
+function objectDisplaySize(displayScale: number) {
+  return Math.round(CHAR_WIDTH * displayScale);
+}
+
 const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 1,
     emoji: "🎳",
+    image: require("@/assets/images/bowling-ball.png"),
     weight: 6,
     timeLimit: 8,
     unitPerTap: 8,
@@ -89,6 +118,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 2,
     emoji: "🛋️",
+    image: require("@/assets/images/couch.png"),
     weight: 50,
     timeLimit: 8,
     unitPerTap: 4.5,
@@ -108,7 +138,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 4,
     emoji: "🧊",
-    image: require("@/assets/fridge_ai.png"),
+    image: require("@/assets/images/fridge.png"),
     weight: 200,
     timeLimit: 10,
     unitPerTap: 3.5,
@@ -128,6 +158,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 6,
     emoji: "🐂",
+    image: require("@/assets/images/bull.png"),
     weight: 1000,
     timeLimit: 10,
     unitPerTap: 1.5,
@@ -137,6 +168,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 7,
     emoji: "🚗",
+    image: require("@/assets/images/car.png"),
     weight: 1500,
     timeLimit: 10,
     unitPerTap: 1.2,
@@ -186,6 +218,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 12,
     emoji: "🐋",
+    image: require("@/assets/images/whale.png"),
     weight: 10000,
     timeLimit: 12,
     unitPerTap: 0.45,
@@ -205,6 +238,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 14,
     emoji: "⚓",
+    image: require("@/assets/images/yacht.png"),
     weight: 15000,
     timeLimit: 15,
     unitPerTap: 0.35,
@@ -214,6 +248,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
   {
     id: 15,
     emoji: "🏗️",
+    image: require("@/assets/images/crane.png"),
     weight: 20000,
     timeLimit: 15,
     unitPerTap: 0.3,
@@ -225,6 +260,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
 function buildLevels(t: (key: string, options?: Record<string, unknown>) => string): Level[] {
   return LEVEL_CONFIGS.map((cfg) => ({
     ...cfg,
+    displayScale: OBJECT_DISPLAY_SCALES[cfg.id] ?? 1,
     name: t(`quickGame.levelList.${cfg.id}.name`),
     description: t(`quickGame.levelList.${cfg.id}.description`, {
       weight: cfg.weight,
@@ -285,6 +321,7 @@ function ObjectDisplay({
   image,
   bounceAnim,
   color,
+  displayScale,
   fallRotate,
   fallOpacity,
   victoryScale,
@@ -293,10 +330,12 @@ function ObjectDisplay({
   image?: any;
   bounceAnim: Animated.Value;
   color: string;
+  displayScale: number;
   fallRotate?: Animated.Value;
   fallOpacity?: Animated.Value;
   victoryScale?: Animated.Value;
 }) {
+  const objectSize = objectDisplaySize(displayScale);
   const transform: any[] = [{ translateX: bounceAnim }];
   if (victoryScale) transform.push({ scale: victoryScale });
   if (fallRotate) {
@@ -311,20 +350,35 @@ function ObjectDisplay({
     <Animated.View
       style={[
         styles.charWrap,
-        { transform, opacity: fallOpacity ?? 1 },
+        styles.objectWrap,
+        {
+          width: objectSize,
+          height: objectSize,
+          marginLeft: -OBJECT_ROPE_OVERLAP,
+          transform,
+          opacity: fallOpacity ?? 1,
+        },
       ]}
     >
       <View
         style={[
           styles.charGlow,
-          { backgroundColor: color + "33", shadowColor: color },
+          {
+            width: objectSize,
+            height: objectSize,
+            borderRadius: objectSize / 2,
+            backgroundColor: color + "33",
+            shadowColor: color,
+          },
         ]}
       />
       {image ? (
-        <Image source={image} style={styles.objectImage} resizeMode="contain" />
-      ) : (
-        <Text style={styles.objectEmoji}>{emoji}</Text>
-      )}
+        <Image
+          source={image}
+          style={{ width: objectSize, height: objectSize }}
+          resizeMode="contain"
+        />
+      ) : null}
     </Animated.View>
   );
 }
@@ -964,13 +1018,16 @@ export default function QuickGameScreen() {
         {/* Joker stock + earn bar */}
         <View style={styles.jokerStockBar}>
           <View style={styles.jokerStockPill}>
-            <Text style={styles.jokerStockText}>⏳ {timeJokersLeft}/3</Text>
+            <JokerIcon type="time" size={14} />
+            <Text style={styles.jokerStockText}>{timeJokersLeft}/3</Text>
           </View>
           <View style={styles.jokerStockPill}>
-            <Text style={styles.jokerStockText}>⚡ {turboJokersLeft}/3</Text>
+            <JokerIcon type="turbo" size={14} />
+            <Text style={styles.jokerStockText}>{turboJokersLeft}/3</Text>
           </View>
           <View style={styles.jokerStockPill}>
-            <Text style={styles.jokerStockText}>💥 {bombJokersLeft}/3</Text>
+            <JokerIcon type="bomb" size={14} />
+            <Text style={styles.jokerStockText}>{bombJokersLeft}/3</Text>
           </View>
           <Pressable
             style={[
@@ -1015,21 +1072,21 @@ export default function QuickGameScreen() {
                 onPress={() => unlocked && startGame(level)}
                 disabled={!unlocked}
               >
-                {level.image ? (
-                  <Image source={level.image} style={styles.levelEmojiImg} resizeMode="contain" />
-                ) : (
-                  <Text style={styles.levelEmoji}>{level.emoji}</Text>
-                )}
+                <Image source={level.image} style={styles.levelEmojiImg} resizeMode="contain" />
                 <View style={styles.levelCardInfo}>
-                  <Text
-                    style={[
-                      styles.levelName,
-                      !unlocked && { color: "#475569" },
-                    ]}
-                  >
-                    {!unlocked ? "🔒 " : ""}
-                    {level.name}
-                  </Text>
+                  <View style={styles.levelNameRow}>
+                    {!unlocked ? (
+                      <AppIcon name="lock-closed" size={14} color="#475569" />
+                    ) : null}
+                    <Text
+                      style={[
+                        styles.levelName,
+                        !unlocked && { color: "#475569" },
+                      ]}
+                    >
+                      {level.name}
+                    </Text>
+                  </View>
                   <Text style={styles.levelDesc}>{level.description}</Text>
                   {unlocked && bestTimes[level.id] !== undefined && (
                     <Text style={styles.levelBestTime}>
@@ -1055,7 +1112,13 @@ export default function QuickGameScreen() {
         <Modal visible={earnMethodVisible} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { paddingVertical: 28 }]}>
-              <Text style={styles.modalEmoji}>🎁</Text>
+              <IconSlot
+                name="gift-outline"
+                size={28}
+                color="#fbbf24"
+                backgroundColor="#fbbf2422"
+                style={{ width: 56, height: 56, borderRadius: 28, alignSelf: "center", marginBottom: 12 }}
+              />
               <Text style={[styles.modalTitle, { color: "#fbbf24", fontSize: 22 }]}>
                 {t("quickGame.earnMethodTitle")}
               </Text>
@@ -1127,7 +1190,13 @@ export default function QuickGameScreen() {
         <Modal visible={jokerPickerVisible} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { paddingVertical: 28 }]}>
-              <Text style={styles.modalEmoji}>🎁</Text>
+              <IconSlot
+                name="gift-outline"
+                size={28}
+                color="#fbbf24"
+                backgroundColor="#fbbf2422"
+                style={{ width: 56, height: 56, borderRadius: 28, alignSelf: "center", marginBottom: 12 }}
+              />
               <Text style={[styles.modalTitle, { color: "#fbbf24", fontSize: 22 }]}>
                 {t("quickGame.jokerEarnTitle")}
               </Text>
@@ -1218,11 +1287,17 @@ export default function QuickGameScreen() {
         <Modal visible={showTutorial} transparent animationType="fade">
           <View style={styles.tutorialOverlay}>
             <View style={styles.tutorialCard}>
-              <Text style={styles.tutorialEmoji}>⚡</Text>
+              <IconSlot
+                name="flash"
+                size={32}
+                color="#fbbf24"
+                backgroundColor="#fbbf2422"
+                style={{ width: 64, height: 64, borderRadius: 32, alignSelf: "center", marginBottom: 8 }}
+              />
               <Text style={styles.tutorialTitle}>{t("quickGame.tutorial.title")}</Text>
 
               <View style={styles.tutorialRow}>
-                <Text style={styles.tutorialBullet}>✨</Text>
+                <AppIcon name="sparkles-outline" size={18} color="#fbbf24" style={styles.tutorialBulletIcon} />
                 <Trans
                   i18nKey="quickGame.tutorial.step1"
                   parent={Text}
@@ -1234,17 +1309,17 @@ export default function QuickGameScreen() {
               </View>
 
               <View style={styles.tutorialRow}>
-                <Text style={styles.tutorialBullet}>⏳</Text>
+                <JokerIcon type="time" size={18} style={styles.tutorialBulletIcon} />
                 <Text style={styles.tutorialRowText}>{t("quickGame.tutorial.step2")}</Text>
               </View>
 
               <View style={styles.tutorialRow}>
-                <Text style={styles.tutorialBullet}>🛡️</Text>
+                <AppIcon name="shield-outline" size={18} color="#94a3b8" style={styles.tutorialBulletIcon} />
                 <Text style={styles.tutorialRowText}>{t("quickGame.tutorial.step3")}</Text>
               </View>
 
               <View style={styles.tutorialRow}>
-                <Text style={styles.tutorialBullet}>🎲</Text>
+                <AppIcon name="apps-outline" size={18} color="#a855f7" style={styles.tutorialBulletIcon} />
                 <Trans
                   i18nKey="quickGame.tutorial.step4"
                   parent={Text}
@@ -1258,7 +1333,7 @@ export default function QuickGameScreen() {
               </View>
 
               <View style={styles.tutorialRow}>
-                <Text style={styles.tutorialBullet}>🔓</Text>
+                <AppIcon name="lock-open-outline" size={18} color="#10b981" style={styles.tutorialBulletIcon} />
                 <Text style={styles.tutorialRowText}>{t("quickGame.tutorial.step5")}</Text>
               </View>
 
@@ -1387,10 +1462,12 @@ export default function QuickGameScreen() {
           </Animated.View>
         </View>
 
-        {/* Object (right) — cisim emoji */}
+        {/* Object (right) — slot always CHAR_WIDTH so rope meets left edge;
+            small/large sprites left-align and may overflow right */}
         <Animated.View
           style={[
             styles.charSlot,
+            styles.objectCharSlot,
             { transform: [{ translateX: objectCharShift }] },
           ]}
         >
@@ -1399,6 +1476,7 @@ export default function QuickGameScreen() {
             image={currentLevel.image}
             bounceAnim={objectCharAnim}
             color={objectColor}
+            displayScale={currentLevel.displayScale}
             fallRotate={phase === "celebrating" ? objectFallRotate : undefined}
             fallOpacity={phase === "celebrating" ? objectFallOpacity : undefined}
             victoryScale={
@@ -1481,11 +1559,7 @@ export default function QuickGameScreen() {
             >
               {currentLevel.image ? (
                 <Image source={currentLevel.image} style={styles.progressBadgeImg} resizeMode="contain" />
-              ) : (
-                <Text style={[styles.progressBadgeNum, { color: objectColor }]}>
-                  {currentLevel.emoji}
-                </Text>
-              )}
+              ) : null}
             </View>
           </View>
         </View>
@@ -1578,9 +1652,14 @@ export default function QuickGameScreen() {
               onPress={handlePull}
               disabled={phase !== "playing"}
             >
-              <Text style={[styles.pullBtnText, { color: playerColor }]}>
-                {turboActive ? `⚡ ${t("common.pull")}` : t("common.pull")}
-              </Text>
+              <View style={styles.pullBtnInner}>
+                {turboActive ? (
+                  <JokerIcon type="turbo" size={16} color={playerColor} />
+                ) : null}
+                <Text style={[styles.pullBtnText, { color: playerColor }]}>
+                  {t("common.pull")}
+                </Text>
+              </View>
             </Pressable>
           </Animated.View>
         </View>
@@ -1616,7 +1695,9 @@ export default function QuickGameScreen() {
                 },
               ]}
             />
-            <Text style={styles.modalEmoji}>{isWin ? "🏆" : "😤"}</Text>
+            <View style={{ marginBottom: 8 }}>
+              <TrophyIcon size={56} color={isWin ? playerColor : objectColor} />
+            </View>
             <Text
               style={[
                 styles.modalTitle,
@@ -1655,11 +1736,7 @@ export default function QuickGameScreen() {
                   onPress={() => startGame(nextLevel)}
                 >
                   <View style={styles.modalBtnRow}>
-                    {nextLevel.image ? (
-                      <Image source={nextLevel.image} style={styles.modalBtnImg} resizeMode="contain" />
-                    ) : (
-                      <Text style={styles.modalBtnMainText}>{nextLevel.emoji}</Text>
-                    )}
+                    <Image source={nextLevel.image} style={styles.modalBtnImg} resizeMode="contain" />
                     <Text style={[styles.modalBtnMainText, { fontSize: nextLevel.name.length > 10 ? 14 : 17 }]}>
                       {t("quickGame.nextLevel", { name: nextLevel.name })}
                     </Text>
@@ -1755,13 +1832,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: ROPE_PAD,
     position: "relative",
+    overflow: "visible",
   },
   charSlot: {
     width: CHAR_WIDTH,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "visible",
+    zIndex: 2,
+  },
+  objectCharSlot: {
+    // İp slot'un sol kenarına gelir; cisim oraya yaslanır (boşluk olmaz)
+    alignItems: "flex-start",
+    justifyContent: "center",
   },
   charWrap: { alignItems: "center" },
+  objectWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
   charGlow: {
     width: 100,
     height: 100,
@@ -1780,7 +1869,7 @@ const styles = StyleSheet.create({
   progressBadgeImg: { width: 36, height: 36 },
   gameTop: {
     flex: 1,
-    overflow: "hidden",
+    overflow: "visible",
   },
   gameBottom: {
     flexShrink: 0,
@@ -1848,7 +1937,7 @@ const styles = StyleSheet.create({
   modalBtnRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   modalBtnImg: { width: 28, height: 28 },
 
-  ropeWrap: { flex: 1, height: 140, overflow: "hidden" },
+  ropeWrap: { flex: 1, height: 140, overflow: "visible", zIndex: 1 },
   ropeImgWrap: { position: "absolute", top: 64, height: 4 },
   ropeImg: { width: "100%", height: 4 },
 
@@ -1929,6 +2018,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   pullBtnDisabled: { opacity: 0.35 },
+  pullBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
   pullBtnText: {
     fontSize: 24,
     fontFamily: "Inter_700Bold",
@@ -2026,6 +2121,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   jokerStockPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     backgroundColor: "#1e293b",
     borderRadius: 10,
     paddingVertical: 6,
@@ -2122,6 +2220,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 2,
   },
+  tutorialBulletIcon: {
+    marginTop: 2,
+    width: 22,
+  },
   tutorialRowText: {
     flex: 1,
     fontSize: 14,
@@ -2171,6 +2273,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   levelCardLocked: { opacity: 0.5 },
+  levelNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   levelEmoji: { fontSize: 38, width: 50, textAlign: "center" },
   levelCardInfo: { flex: 1 },
   levelName: {

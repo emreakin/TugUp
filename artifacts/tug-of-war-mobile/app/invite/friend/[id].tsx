@@ -13,6 +13,8 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { AppIcon } from "@/components/AppIcon";
+import { IconSlot } from "@/components/IconSlot";
 import { apiFetch } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
 
@@ -104,7 +106,13 @@ export default function FriendInviteScreen() {
         {status === "loading" ? (
           <ActivityIndicator size="large" color="#3b82f6" />
         ) : (
-          <Text style={styles.emoji}>{status === "success" ? "🎉" : "😕"}</Text>
+          <IconSlot
+            name={status === "success" ? "checkmark-circle" : "alert-circle-outline"}
+            size={32}
+            color={status === "success" ? "#10b981" : "#f59e0b"}
+            backgroundColor={status === "success" ? "#10b98122" : "#f59e0b22"}
+            style={{ width: 64, height: 64, borderRadius: 32, marginBottom: 8 }}
+          />
         )}
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>

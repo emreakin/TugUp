@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { IconSlot } from "@/components/IconSlot";
 import { apiFetch } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
 
@@ -94,7 +95,13 @@ export default function GameInviteScreen() {
     <View style={[styles.container, { paddingTop: topInset, paddingBottom: bottomInset }]}>
       <StatusBar barStyle="light-content" />
       <View style={styles.content}>
-        <Text style={styles.emoji}>⚔️</Text>
+        <IconSlot
+          name="people-outline"
+          size={32}
+          color="#3b82f6"
+          backgroundColor="#3b82f622"
+          style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }}
+        />
         <Text style={styles.title}>{t("invite.game.title")}</Text>
         <Text style={styles.subtitle}>{t("invite.game.subtitle")}</Text>
 

@@ -1,10 +1,13 @@
 {
   "home": {
-    "tagline": "Dünyanın en büyük gücünü belirle!",
+    "tagline": "Çek. Kazan. Kanıtla.",
     "modes": {
       "quickGame": "Hızlı Oyun",
+      "quickGameHint": "Seviyeler · Solo",
       "oneVsOne": "1v1",
-      "online": "Online"
+      "oneVsOneHint": "Arkadaş veya eşleşme",
+      "online": "Online",
+      "onlineHint": "Oyla · Kim daha güçlü?"
     },
     "friends": "Arkadaşlar",
     "settings": "Ayarlar",
@@ -38,14 +41,14 @@
     "player": "Oyuncu",
     "opponent": "Rakip",
     "you": "Sen",
-    "ready": "✓ Hazır",
+    "ready": "Hazır",
     "usernamePlaceholder": "Kullanıcı Adı",
     "onboarding": {
       "skip": "Atla",
       "next": "İleri",
       "start": "Başla!"
     },
-    "pull": "💪 ÇEK!",
+    "pull": "ÇEK!",
     "secondsShort": "sn",
     "homePage": "Ana Sayfa",
     "requestFailed": "İstek başarısız."
@@ -64,13 +67,13 @@
       "connectionError": "Bağlantı sorunu."
     },
     "onboarding": {
-      "step1Title": "🌍 Online Oylama",
+      "step1Title": "Online Oylama",
       "step1Text": "TugUp'un kalbi burada! Dünyanın en büyük mücadelelerini (Galatasaray vs Fenerbahçe, Android vs iOS...) seç ve desteklediğin taraf için halatı çekerek skora katkı sağla.",
-      "step2Title": "🎩 Nasıl Oynanır?",
+      "step2Title": "Nasıl Oynanır?",
       "step2Text": "Bir mücadele seç, ekranda beliren halatı tarafın rengiyle eşleşen butona tıklayarak çek. Her oy verdiğinde halat o tarafa doğru kayar. Rakip tarafın da oy verdiğini unutma!",
-      "step3Title": "⏳ Bekleme Sistemi",
+      "step3Title": "Bekleme Sistemi",
       "step3Text": "Her oy verişten sonra kısa bir bekleme süresi başlar. Video izleyerek (Ödüllü Reklam) bu süreyi atlayabilir ve tekrar oy verebilirsin.",
-      "step4Title": "🗓 Haftalık Sıfırlama",
+      "step4Title": "Haftalık Sıfırlama",
       "step4Text": "Her hafta Pazartesi başlangıcında tüm skorlar sıfırlanır. Hafta boyunca en çok oy alan taraf o haftanın galibi olur ve kümülatif bir galibiyet puanı kazanır."
     }
   },
@@ -86,8 +89,8 @@
     "inviteFriendDesc": "Link paylaş, arkadaşın katılsın",
     "nameSubtitleInvite": "Davet linkini paylaşmak için adını gir",
     "nameSubtitleRandom": "Mücadeleye katılmadan önce adını gir",
-    "createInvite": "Davet Oluştur 🔗",
-    "start": "Başla 💪",
+    "createInvite": "Davet Oluştur",
+    "start": "Başla",
     "connecting": "Sunucuya bağlanıyor…",
     "retry": "Tekrar Dene",
     "serverError": "Sunucu hatası.",
@@ -98,21 +101,21 @@
     "waitingInviteFooter": "Arkadaşın linki açınca oyun başlayacak. Bu ekranda kal!",
     "waitingMatchFooter": "Eşleşme aranıyor… Bu ekranda kal!",
     "remaining": "KALDI",
-    "pullLeft": "💪 ÇEK!",
-    "pullRight": "ÇEK! 💪",
+    "pullLeft": "ÇEK!",
+    "pullRight": "ÇEK!",
     "youWon": "KAZANDIN!",
     "youLost": "KAYBETTİN",
     "winMessage": "Tebrıkler {{name}}, {{opponent}} karşısında zafer senin!",
     "loseMessage": "{{opponent}} bu mücadeleyi kazandı. Bir dahaki sefere güçlü dön!",
-    "playAgain": "🔄 Yeniden Oyna",
+    "playAgain": "Yeniden Oyna",
     "onboarding": {
-      "step1Title": "🎡 1v1 Gerçek Zamanlı Oyna",
+      "step1Title": "1v1 Gerçek Zamanlı Oyna",
       "step1Text": "Başka bir oyuncuyla eşleş ve karşılıklı halat çek! İki karakter, bir halat ve tek amaç: rakibini kendi tarafına çekmek.",
-      "step2Title": "🧩 Oynamak Çok Basit",
+      "step2Title": "Oynamak Çok Basit",
       "step2Text": "Ekranın altındaki butona hızlıca tıkla. Her tıklamanda halat senin tarafına doğru kayar. Ama dikkat: rakibin de aynı şeyi yapıyor!",
-      "step3Title": "🎯 Kazanmak için",
+      "step3Title": "Kazanmak için",
       "step3Text": "Halatı merkez çizgiden karşı tarafın sonuna kadar çekmek zorundasın. İlerleme çubuğunu takip et — rakibini yener misin?",
-      "step4Title": "✅ Eşleşme Bekleme",
+      "step4Title": "Eşleşme Bekleme",
       "step4Text": "Adını yazdıktan sonra oyun seni otomatik olarak bir rakiple eşleştiriyor. Rakibin gelene kadar bu ekranda bekle. Hazırsan başla!"
     }
   },
@@ -150,85 +153,130 @@
     }
   },
   "quickGame": {
-    "title": "⚡ Hızlı Oyun",
+    "title": "Hızlı Oyun",
     "subtitle": "Bir seviye seç ve çekişi başlat!",
-    "loading": "⏳ Yükleniyor…",
-    "earnJoker": "🎁 Joker Kazan (+1)",
-    "bestTime": "🥇 {{seconds}} sn",
+    "loading": "Yükleniyor…",
+    "earnJoker": "Joker Kazan (+1)",
+    "bestTime": "{{seconds}} sn",
     "jokerFullTitle": "Joker Depo Dolu",
     "jokerFullMessage": "Tüm jokerler zaten maksimum sınıra ulaştı (3).",
     "adFailedTitle": "Reklam yüklenemedi",
     "adFailedMessage": "Lütfen tekrar dene.",
     "earnMethodTitle": "Joker Nasıl Kazanılır?",
     "earnMethodSubtitle": "Bir yöntem seç",
-    "earnByAd": "🎬 Reklam İzle",
-    "earnByCoins": "🪙 {{cost}} Coin ile Al",
-    "earnByCoinsDisabled": "🪙 Yetersiz coin ({{balance}}/{{cost}})",
+    "earnByAd": "Reklam İzle",
+    "earnByCoins": "{{cost}} Coin ile Al",
+    "earnByCoinsDisabled": "Yetersiz coin ({{balance}}/{{cost}})",
     "coinPurchaseFailed": "Coin ile satın alma başarısız.",
     "jokerEarnTitle": "Joker Kazan!",
     "jokerEarnSubtitle": "Hangi jokeri 1 artırmak istiyorsun?",
-    "timeJokerPicker": "⏳ +2 sn Joker",
-    "bombJokerPicker": "💥 +25 Joker",
-    "turboJokerPicker": "⚡ Turbo Güç",
+    "timeJokerPicker": "+2 sn Joker",
+    "bombJokerPicker": "+25 Joker",
+    "turboJokerPicker": "Turbo Güç",
     "full": "(Dolu)",
     "jokers": "JOKERLER",
-    "timeJokerDone": "⏳ Bitti",
-    "timeJoker": "⏳ +2 sn ({{count}})",
-    "bombLocked": "💥 Lv8'de açılır",
-    "bombDone": "💥 Bitti",
-    "bombRoundLimit": "💥 Tur limiti",
-    "bombJoker": "💥 +%25 ({{remaining}})",
-    "turboLocked": "⚡ Lv5'te açılır",
-    "turboDone": "⚡ Bitti",
-    "turboJoker": "⚡ Turbo ({{count}})",
-    "turboActive": "⚡ {{seconds}}s",
+    "timeJokerDone": "Bitti",
+    "timeJoker": "+2 sn ({{count}})",
+    "bombLocked": "Lv8'de açılır",
+    "bombDone": "Bitti",
+    "bombRoundLimit": "Tur limiti",
+    "bombJoker": "+%25 ({{remaining}})",
+    "turboLocked": "Lv5'te açılır",
+    "turboDone": "Bitti",
+    "turboJoker": "Turbo ({{count}})",
+    "turboActive": "{{seconds}}s",
     "pulled": "ÇEKİLDİ",
     "youWon": "KAZANDIN!",
     "timeUp": "SÜRE DOLDU!",
     "winSubtitle": "{{name}} çizgiye ulaştı!",
     "loseSubtitle": "{{name}} çizgiye ulaşamadı.",
-    "newRecord": "🥇 YENİ REKOR! Kalan: {{seconds}} sn",
-    "newRecordLastSecond": "🥇 YENİ REKOR! Son saniyede bitirildi!",
-    "playAgain": "🔄 Tekrar Oyna",
+    "newRecord": "YENİ REKOR! Kalan: {{seconds}} sn",
+    "newRecordLastSecond": "YENİ REKOR! Son saniyede bitirildi!",
+    "playAgain": "Tekrar Oyna",
     "nextLevel": "Sonraki: {{name}}",
-    "allComplete": "🎉 Tüm Seviyeleri Bitirdin!",
+    "allComplete": "Tüm Seviyeleri Bitirdin!",
     "levelsBtn": "Seviyeler",
     "tutorial": {
       "title": "Hızlı Oyun'a Hoş Geldin!",
       "step1": "Bir seviye seç ve ekrandaki <bold>“ÇEK!”</bold> butonuna hızlıca basarak objeyi kendi tarafına çek.",
       "step2": "Zaman dolmadan objeyi kendi çizgine ulaştırmalısın. Kalan süre ne kadar fazlaysa rekorun o kadar iyi!",
       "step3": "Objeyi çektiğinde onu zıt yönde iten bir kuvvet var. Her 3-5 saniyede 10 birim geri gidebilir!",
-      "step4": "Jokerler ile avantaj sağla: <time>⏳ +2 sn</time> zaman ekle, <bomb>💥 +%25</bomb> yaklaştır veya <turbo>⚡ Turbo Güç</turbo> ile 3 saniye boyunca 2 kat hızlı çek. Video izleyerek joker kazanabilirsin.",
+      "step4": "Jokerler ile avantaj sağla: <time> +2 sn</time> zaman ekle, <bomb> +%25</bomb> yaklaştır veya <turbo> Turbo Güç</turbo> ile 3 saniye boyunca 2 kat hızlı çek. Video izleyerek joker kazanabilirsin.",
       "step5": "Her seviyeyi geçtiğinde sonrakinin kilidi açılır. Toplamda 15 farklı obje seni bekliyor!",
-      "start": "Anladım, Başlayalım! 💪"
+      "start": "Anladım, Başlayalım!"
     },
     "levelList": {
-      "1": { "name": "Bowling Topu", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "2": { "name": "Kanepe", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "3": { "name": "Çamaşır Makinesi", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "4": { "name": "Buzdolabı", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "5": { "name": "ATV", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "6": { "name": "Boğa", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "7": { "name": "Araba", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "8": { "name": "SUV", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "9": { "name": "Kamyonet", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "10": { "name": "Fil", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "11": { "name": "T-Rex", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "12": { "name": "Balina", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "13": { "name": "Otobüs", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "14": { "name": "Yat", "description": "~{{weight}} kg · {{seconds}} saniye" },
-      "15": { "name": "Vinç", "description": "~{{weight}} kg · {{seconds}} saniye" }
+      "1": {
+        "name": "Bowling Topu",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "2": {
+        "name": "Kanepe",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "3": {
+        "name": "Çamaşır Makinesi",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "4": {
+        "name": "Buzdolabı",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "5": {
+        "name": "ATV",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "6": {
+        "name": "Boğa",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "7": {
+        "name": "Araba",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "8": {
+        "name": "SUV",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "9": {
+        "name": "Kamyonet",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "10": {
+        "name": "Fil",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "11": {
+        "name": "T-Rex",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "12": {
+        "name": "Balina",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "13": {
+        "name": "Otobüs",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "14": {
+        "name": "Yat",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      },
+      "15": {
+        "name": "Vinç",
+        "description": "~{{weight}} kg · {{seconds}} saniye"
+      }
     }
   },
   "game": {
     "remaining": "KALDI",
     "timeRemaining": "KALAN SÜRE",
-    "pullLeft": "💪 ÇEK!",
-    "pullRight": "ÇEK! 💪",
-    "adLoading": "⏳ Video yükleniyor…",
-    "watchAd": "🎬 Video İzle ({{remaining}} kaldı) → 💪 Hemen Çek",
+    "pullLeft": "ÇEK!",
+    "pullRight": "ÇEK!",
+    "adLoading": "Video yükleniyor…",
+    "watchAd": "Video İzle ({{remaining}} kaldı) → Hemen Çek",
     "won": "Kazandı!",
-    "playAgain": "Tekrar Oyna 🔄",
+    "playAgain": "Tekrar Oyna",
     "menu": "Menü ←",
     "dailyLimitTitle": "Günlük Limit Doldu",
     "dailyLimitMessage": "Bugünkü 3 video hakkın bitti. Yarın tekrar dene!",

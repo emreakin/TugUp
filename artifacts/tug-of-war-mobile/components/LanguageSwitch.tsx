@@ -2,12 +2,13 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
+import { theme } from "@/constants/theme";
 import { useLocale } from "@/contexts/LocaleContext";
 import type { AppLanguage } from "@/lib/i18n";
 
-const LANGUAGES: { code: AppLanguage; flag: string; label: string }[] = [
-  { code: "tr", flag: "🇹🇷", label: "TR" },
-  { code: "en", flag: "🇬🇧", label: "EN" },
+const LANGUAGES: { code: AppLanguage; label: string }[] = [
+  { code: "tr", label: "TR" },
+  { code: "en", label: "EN" },
 ];
 
 export function LanguageSwitch() {
@@ -28,8 +29,9 @@ export function LanguageSwitch() {
             accessibilityState={{ selected }}
             accessibilityLabel={lang.label}
           >
-            <Text style={styles.flag}>{lang.flag}</Text>
-            <Text style={[styles.label, selected && styles.labelSelected]}>{lang.label}</Text>
+            <Text style={[styles.label, selected && styles.labelSelected]}>
+              {lang.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -40,33 +42,29 @@ export function LanguageSwitch() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.borderSoft,
     padding: 3,
     gap: 2,
   },
   option: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    justifyContent: "center",
+    paddingVertical: 7,
+    paddingHorizontal: 12,
     borderRadius: 11,
   },
   optionSelected: {
-    backgroundColor: "#334155",
-  },
-  flag: {
-    fontSize: 16,
+    backgroundColor: theme.surfaceRaised,
   },
   label: {
     fontSize: 12,
     fontFamily: "Inter_700Bold",
-    color: "#64748b",
+    color: theme.textDim,
   },
   labelSelected: {
-    color: "#f8fafc",
+    color: theme.text,
   },
 });

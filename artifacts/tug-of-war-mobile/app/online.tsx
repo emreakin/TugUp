@@ -19,6 +19,8 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SubtleBannerSlot } from "@/components/HomeBannerAd";
+import { AppIcon, CrownIcon, TrophyIcon } from "@/components/AppIcon";
+import { IconSlot } from "@/components/IconSlot";
 import { getApiBase, getApiHeaders } from "@/lib/api";
 
 interface Matchup {
@@ -251,15 +253,26 @@ export default function OnlineScreen() {
                     ]}
                     onPress={() => handleSelect(m)}
                   >
-                    <Text style={styles.cardEmoji}>{m.emoji}</Text>
+                    <IconSlot
+                      name="git-compare-outline"
+                      size={22}
+                      color="#94a3b8"
+                      backgroundColor="#0f172a"
+                    />
                     <View style={styles.cardMiddle}>
-                      <Text style={[styles.teamName, { color: m.leftColor, textAlign: "center" }]}>
-                        {leftLeads ? "👑 " : ""}{m.leftTeam}
-                      </Text>
+                      <View style={styles.teamNameRow}>
+                        {leftLeads ? <CrownIcon size={12} /> : null}
+                        <Text style={[styles.teamName, { color: m.leftColor, textAlign: "center" }]}>
+                          {m.leftTeam}
+                        </Text>
+                      </View>
                       <Text style={styles.vsText}>{t("common.vs")}</Text>
-                      <Text style={[styles.teamName, { color: m.rightColor, textAlign: "center" }]}>
-                        {m.rightTeam}{rightLeads ? " 👑" : ""}
-                      </Text>
+                      <View style={styles.teamNameRow}>
+                        <Text style={[styles.teamName, { color: m.rightColor, textAlign: "center" }]}>
+                          {m.rightTeam}
+                        </Text>
+                        {rightLeads ? <CrownIcon size={12} /> : null}
+                      </View>
                     </View>
                     <Feather name="chevron-right" size={20} color="#475569" />
                   </Pressable>
@@ -499,6 +512,12 @@ const styles = StyleSheet.create({
   teamName: {
     fontSize: 17,
     fontFamily: "Inter_700Bold",
+  },
+  teamNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
   },
   vsText: {
     fontSize: 12,
