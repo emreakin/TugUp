@@ -22,6 +22,7 @@ import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { AppIcon, CrownIcon, TrophyIcon } from "@/components/AppIcon";
 import { IconSlot } from "@/components/IconSlot";
 import { getApiBase, getApiHeaders } from "@/lib/api";
+import { theme } from "@/constants/theme";
 
 interface Matchup {
   id: string;
@@ -256,8 +257,8 @@ export default function OnlineScreen() {
                     <IconSlot
                       name="git-compare-outline"
                       size={22}
-                      color="#94a3b8"
-                      backgroundColor="#0f172a"
+                      color={theme.textMuted}
+                      backgroundColor={theme.bg}
                     />
                     <View style={styles.cardMiddle}>
                       <View style={styles.teamNameRow}>
@@ -274,7 +275,7 @@ export default function OnlineScreen() {
                         {rightLeads ? <CrownIcon size={12} /> : null}
                       </View>
                     </View>
-                    <Feather name="chevron-right" size={20} color="#475569" />
+                    <Feather name="chevron-right" size={20} color={theme.textDim} />
                   </Pressable>
                 );
               })}
@@ -289,7 +290,7 @@ export default function OnlineScreen() {
             <View style={styles.suggestForm}>
               <TextInput
                 style={styles.input}
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.textDim}
                 value={leftTeam}
                 onChangeText={setLeftTeam}
                 maxLength={50}
@@ -297,7 +298,7 @@ export default function OnlineScreen() {
               <Text style={styles.formVs}>{t("common.vs")}</Text>
               <TextInput
                 style={styles.input}
-                placeholderTextColor="#475569"
+                placeholderTextColor={theme.textDim}
                 value={rightTeam}
                 onChangeText={setRightTeam}
                 maxLength={50}
@@ -419,7 +420,7 @@ export default function OnlineScreen() {
 const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
-    backgroundColor: "#0f172a",
+    backgroundColor: theme.bg,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -442,13 +443,13 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    color: "#94a3b8",
+    fontFamily: theme.fonts.semiBold,
+    color: theme.textMuted,
   },
   headerTitle: {
-    color: "#f8fafc",
+    color: theme.text,
     fontSize: 18,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     flex: 1,
     textAlign: "center",
   },
@@ -457,15 +458,15 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 40,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#ef4444",
     letterSpacing: 2,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: "#475569",
+    fontFamily: theme.fonts.semiBold,
+    color: theme.textDim,
     letterSpacing: 3,
     textTransform: "uppercase",
   },
@@ -473,13 +474,13 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   card: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 18,
     padding: 20,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
     gap: 14,
   },
   cardPressed: {
@@ -488,7 +489,7 @@ const styles = StyleSheet.create({
   },
   cardInactive: {
     opacity: 0.45,
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
   },
   cardEmoji: {
     fontSize: 28,
@@ -511,7 +512,7 @@ const styles = StyleSheet.create({
   },
   teamName: {
     fontSize: 17,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
   },
   teamNameRow: {
     flexDirection: "row",
@@ -521,51 +522,51 @@ const styles = StyleSheet.create({
   },
   vsText: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "#475569",
+    fontFamily: theme.fonts.semiBold,
+    color: theme.textDim,
   },
   divider: {
     height: 1,
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     marginVertical: 32,
   },
   sectionTitle: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: "#475569",
+    fontFamily: theme.fonts.semiBold,
+    color: theme.textDim,
     letterSpacing: 3,
     textTransform: "uppercase",
     textAlign: "center",
     marginBottom: 20,
   },
   suggestForm: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 18,
     padding: 20,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
   input: {
-    backgroundColor: "#0f172a",
+    backgroundColor: theme.bg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
     paddingHorizontal: 16,
     paddingVertical: 12,
     color: "#f1f5f9",
     fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
   },
   formVs: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: "#475569",
+    fontFamily: theme.fonts.semiBold,
+    color: theme.textDim,
     textAlign: "center",
     letterSpacing: 2,
   },
   submitBtn: {
-    backgroundColor: "#ef4444",
+    backgroundColor: theme.ember,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
@@ -577,24 +578,24 @@ const styles = StyleSheet.create({
   submitBtnText: {
     color: "#fff",
     fontSize: 15,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     letterSpacing: 2,
   },
   emptyText: {
-    color: "#475569",
-    fontFamily: "Inter_600SemiBold",
+    color: theme.textDim,
+    fontFamily: theme.fonts.semiBold,
     fontSize: 14,
     textAlign: "center",
     marginTop: 24,
   },
   suggestionCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 18,
     padding: 16,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
     gap: 12,
   },
   suggestionMiddle: {
@@ -605,12 +606,12 @@ const styles = StyleSheet.create({
   },
   suggestionTeam: {
     fontSize: 16,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#f1f5f9",
     textAlign: "center",
   },
   voteBtn: {
-    backgroundColor: "#334155",
+    backgroundColor: theme.border,
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -623,13 +624,13 @@ const styles = StyleSheet.create({
   voteBtnIcon: {
     color: "#f1f5f9",
     fontSize: 12,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     textAlign: "center",
   },
   voteBtnCount: {
     color: "#f1f5f9",
     fontSize: 14,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     textAlign: "center",
   },
   // Onboarding styles
@@ -641,30 +642,30 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   onboardingCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 24,
     padding: 28,
     width: "100%",
     maxWidth: 360,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
   onboardingStepCount: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: "#64748b",
+    fontFamily: theme.fonts.semiBold,
+    color: theme.textDim,
     marginBottom: 8,
   },
   onboardingTitle: {
     fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    color: "#f8fafc",
+    fontFamily: theme.fonts.bold,
+    color: theme.text,
     marginBottom: 12,
   },
   onboardingText: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    color: "#cbd5e1",
+    fontFamily: theme.fonts.regular,
+    color: theme.textMuted,
     lineHeight: 22,
     marginBottom: 24,
   },
@@ -678,10 +679,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#334155",
+    backgroundColor: theme.border,
   },
   onboardingDotActive: {
-    backgroundColor: "#ef4444",
+    backgroundColor: theme.ember,
     width: 20,
   },
   onboardingButtons: {
@@ -691,7 +692,7 @@ const styles = StyleSheet.create({
   },
   onboardingBtnPrimary: {
     flex: 1,
-    backgroundColor: "#ef4444",
+    backgroundColor: theme.ember,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
@@ -702,16 +703,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
   onboardingBtnPrimaryText: {
     color: "#fff",
     fontSize: 15,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
   },
   onboardingBtnSecondaryText: {
-    color: "#94a3b8",
+    color: theme.textMuted,
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
   },
 });

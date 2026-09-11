@@ -20,6 +20,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getApiBase, getApiHeaders } from "@/lib/api";
 import { feedbackPull, feedbackWin, preloadFeedback } from "@/lib/feedback";
 import { AppIcon, CrownIcon, TrophyIcon } from "@/components/AppIcon";
+import { ArenaAtmosphere } from "@/components/ArenaAtmosphere";
+import { theme } from "@/constants/theme";
 
 // AdMob is loaded dynamically on native only — see ad-helper.native.ts
 
@@ -457,6 +459,7 @@ export default function GameScreen() {
 
       {/* Rope area with characters on each side */}
       <View style={styles.ropeArea}>
+        <ArenaAtmosphere leftColor={leftColor} rightColor={rightColor} />
         {/* Left character (slides right when right side pulls) */}
         <Animated.View
           style={[
@@ -494,6 +497,7 @@ export default function GameScreen() {
         </Animated.View>
 
         {/* Fixed center line */}
+        <View style={styles.centerLineGlow} pointerEvents="none" />
         <View style={styles.centerLine} pointerEvents="none" />
 
         {/* Weekly countdown to next reset */}
@@ -650,7 +654,7 @@ export default function GameScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f172a",
+    backgroundColor: theme.bg,
   },
   header: {
     flexDirection: "row",
@@ -662,14 +666,14 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   backText: {
-    color: "#94a3b8",
+    color: theme.textMuted,
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
   },
   headerTitle: {
-    color: "#f8fafc",
+    color: theme.text,
     fontSize: 18,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     flex: 1,
     textAlign: "center",
   },
@@ -690,7 +694,7 @@ const styles = StyleSheet.create({
   },
   teamLabel: {
     fontSize: 17,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     flex: 1,
     textAlign: "center",
     letterSpacing: 0.5,
@@ -703,9 +707,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   vsLabel: {
-    color: "#475569",
+    color: theme.textDim,
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     marginHorizontal: 10,
   },
   clickRow: {
@@ -717,7 +721,7 @@ const styles = StyleSheet.create({
   },
   clickCount: {
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
   },
 
   /* Rope area */
@@ -727,16 +731,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: ROPE_PAD,
     position: "relative",
+    overflow: "hidden",
   },
   charSlot: {
     width: CHAR_WIDTH,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 2,
   },
   ropeWrap: {
     flex: 1,
     height: 140,
     overflow: "hidden",
+    zIndex: 1,
   },
   ropeImgWrap: {
     position: "absolute",
@@ -747,20 +754,31 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 4,
   },
+  centerLineGlow: {
+    position: "absolute",
+    left: "50%",
+    top: "22%",
+    bottom: "26%",
+    width: 10,
+    marginLeft: -5,
+    backgroundColor: "rgba(212,160,90,0.14)",
+    zIndex: 9,
+    borderRadius: 5,
+  },
   centerLine: {
     position: "absolute",
-    top: "50%",
+    top: "18%",
+    bottom: "22%",
     left: "50%",
-    width: 5,
-    height: 90,
-    backgroundColor: "#ef4444",
-    borderRadius: 2.5,
-    marginLeft: -2.5,
-    marginTop: -45,
-    shadowColor: "#ef4444",
-    shadowOpacity: 0.9,
-    shadowRadius: 10,
+    width: 3,
+    backgroundColor: "rgba(242,235,227,0.55)",
+    borderRadius: 1.5,
+    marginLeft: -1.5,
+    shadowColor: theme.rope,
+    shadowOpacity: 0.55,
+    shadowRadius: 8,
     elevation: 8,
+    zIndex: 10,
   },
   countdownWrap: {
     position: "absolute",
@@ -770,10 +788,11 @@ const styles = StyleSheet.create({
     bottom: "50%",
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 3,
   },
   countdownLabel: {
     fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     color: "#ef4444",
     letterSpacing: 2.5,
     textTransform: "uppercase",
@@ -782,8 +801,8 @@ const styles = StyleSheet.create({
   },
   countdownText: {
     fontSize: 36,
-    fontFamily: "Inter_700Bold",
-    color: "#f8fafc",
+    fontFamily: theme.fonts.bold,
+    color: theme.text,
     letterSpacing: 3,
     textShadowColor: "rgba(239, 68, 68, 0.8)",
     textShadowOffset: { width: 0, height: 0 },
@@ -827,12 +846,12 @@ const styles = StyleSheet.create({
   },
   progressBadgeNum: {
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     lineHeight: 24,
   },
   progressBadgeLabel: {
     fontSize: 9,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     letterSpacing: 1.2,
     opacity: 0.9,
   },
@@ -866,7 +885,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 18,
     marginLeft: -2,
-    backgroundColor: "#f8fafc",
+    backgroundColor: theme.text,
     borderRadius: 2,
     shadowColor: "#fff",
     shadowOpacity: 0.8,
@@ -919,7 +938,7 @@ const styles = StyleSheet.create({
   },
   pullBtnText: {
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     letterSpacing: 1,
   },
   pullBtnDisabled: {
@@ -944,7 +963,7 @@ const styles = StyleSheet.create({
   },
   adBtnText: {
     fontSize: 15,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#fbbf24",
     letterSpacing: 0.5,
   },
@@ -958,7 +977,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalBox: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 28,
     padding: 36,
     alignItems: "center",
@@ -973,13 +992,13 @@ const styles = StyleSheet.create({
   },
   modalWinner: {
     fontSize: 28,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     textAlign: "center",
   },
   modalKazandi: {
     fontSize: 18,
     color: "rgba(255,255,255,0.7)",
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
   },
   modalConfetti: {
     fontSize: 40,
@@ -1007,12 +1026,12 @@ const styles = StyleSheet.create({
   },
   modalBtnText: {
     color: "#ffffff",
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     fontSize: 16,
   },
   modalBtnTextSecondary: {
     color: "rgba(255,255,255,0.6)",
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     fontSize: 15,
   },
 });

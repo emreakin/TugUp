@@ -415,13 +415,13 @@ const styles = StyleSheet.create({
   },
   coinDotText: {
     color: theme.bg,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     fontSize: 10,
     lineHeight: 12,
   },
   coinText: {
     color: theme.gold,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     fontSize: 13,
   },
   brandBlock: {
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   wordmark: {
-    fontFamily: "BebasNeue_400Regular",
+    fontFamily: theme.fonts.display,
     fontSize: 68,
     letterSpacing: 3,
     lineHeight: 70,
@@ -492,11 +492,11 @@ const styles = StyleSheet.create({
     textShadowRadius: 14,
   },
   wordmarkTug: {
-    fontFamily: "BebasNeue_400Regular",
+    fontFamily: theme.fonts.display,
     color: theme.text,
   },
   wordmarkUp: {
-    fontFamily: "BebasNeue_400Regular",
+    fontFamily: theme.fonts.display,
     color: theme.rope,
   },
   wordmarkUnderline: {
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     color: theme.ropeSoft,
     textAlign: "center",
     letterSpacing: 0.6,
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   },
   nameChipText: {
     color: theme.text,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     fontSize: 13,
   },
   buttonList: {
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   modeLabel: {
     fontSize: 17,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: theme.text,
     letterSpacing: 0.2,
   },
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   },
   modeHint: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
+    fontFamily: theme.fonts.regular,
     color: theme.textMuted,
   },
   modeHintPrimary: {
@@ -602,12 +602,12 @@ const styles = StyleSheet.create({
   },
   footerBtnText: {
     color: theme.textMuted,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     fontSize: 14,
   },
   footerText: {
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     color: theme.textDim,
     letterSpacing: 1.2,
   },
@@ -640,18 +640,18 @@ const styles = StyleSheet.create({
   },
   modalCoinText: {
     color: theme.bg,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     fontSize: 22,
   },
   modalTitle: {
     fontSize: 22,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: theme.gold,
     marginBottom: 8,
   },
   modalMessage: {
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     color: theme.textMuted,
     textAlign: "center",
     marginBottom: 22,
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
   },
   modalBtnText: {
     color: theme.bg,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     fontSize: 15,
   },
 });

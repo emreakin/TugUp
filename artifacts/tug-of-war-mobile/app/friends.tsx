@@ -22,6 +22,7 @@ import { FRIENDS_ENABLED } from "@/lib/features";
 import { EditNameModal } from "@/components/EditNameModal";
 import { AppIcon } from "@/components/AppIcon";
 import { IconSlot } from "@/components/IconSlot";
+import { theme } from "@/constants/theme";
 
 export default function FriendsScreen() {
   const insets = useSafeAreaInsets();
@@ -171,8 +172,8 @@ export default function FriendsScreen() {
             <IconSlot
               name="people-outline"
               size={28}
-              color="#94a3b8"
-              backgroundColor="#1e293b"
+              color={theme.textMuted}
+              backgroundColor={theme.surface}
               style={{ width: 64, height: 64, borderRadius: 32, marginBottom: 12 }}
             />
             <Text style={styles.emptyTitle}>{t("friends.emptyTitle")}</Text>
@@ -209,7 +210,7 @@ export default function FriendsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0f172a" },
+  container: { flex: 1, backgroundColor: theme.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -217,42 +218,42 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   backBtn: { paddingVertical: 8, paddingRight: 12 },
-  backText: { color: "#94a3b8", fontFamily: "Inter_600SemiBold", fontSize: 15 },
+  backText: { color: theme.textMuted, fontFamily: theme.fonts.semiBold, fontSize: 15 },
   headerTitle: {
     flex: 1,
     textAlign: "center",
-    color: "#f8fafc",
-    fontFamily: "Inter_700Bold",
+    color: theme.text,
+    fontFamily: theme.fonts.bold,
     fontSize: 18,
   },
   headerSpacer: { width: 72 },
   content: { padding: 20, gap: 16 },
   profileCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
-  profileLabel: { color: "#64748b", fontFamily: "Inter_600SemiBold", fontSize: 12 },
+  profileLabel: { color: theme.textDim, fontFamily: theme.fonts.semiBold, fontSize: 12 },
   profileNameRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginTop: 4,
   },
-  profileName: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 22 },
+  profileName: { color: theme.text, fontFamily: theme.fonts.bold, fontSize: 22 },
   profileEdit: {
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#334155",
+    backgroundColor: theme.border,
   },
-  profileCode: { color: "#94a3b8", fontFamily: "Inter_600SemiBold", fontSize: 14, marginTop: 4 },
+  profileCode: { color: theme.textMuted, fontFamily: theme.fonts.semiBold, fontSize: 14, marginTop: 4 },
   inviteBtn: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: theme.modes.oneVsOne,
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 20,
@@ -262,34 +263,34 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   inviteBtnPressed: { opacity: 0.85 },
-  inviteBtnText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 },
+  inviteBtnText: { color: "#fff", fontFamily: theme.fonts.bold, fontSize: 16 },
   inviteRewardInfo: {
     color: "#fbbf24",
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     fontSize: 13,
     lineHeight: 20,
     marginTop: -4,
   },
   sectionTitle: {
-    color: "#94a3b8",
-    fontFamily: "Inter_700Bold",
+    color: theme.textMuted,
+    fontFamily: theme.fonts.bold,
     fontSize: 13,
     letterSpacing: 1,
     marginTop: 8,
   },
   emptyBox: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 24,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
   emptyEmoji: { fontSize: 40, marginBottom: 12 },
-  emptyTitle: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 18 },
+  emptyTitle: { color: theme.text, fontFamily: theme.fonts.bold, fontSize: 18 },
   emptyText: {
-    color: "#94a3b8",
-    fontFamily: "Inter_400Regular",
+    color: theme.textMuted,
+    fontFamily: theme.fonts.regular,
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
@@ -298,24 +299,24 @@ const styles = StyleSheet.create({
   friendRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
     gap: 12,
   },
   friendAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#334155",
+    backgroundColor: theme.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  friendAvatarText: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 18 },
+  friendAvatarText: { color: theme.text, fontFamily: theme.fonts.bold, fontSize: 18 },
   friendInfo: { flex: 1 },
-  friendName: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 16 },
-  friendCode: { color: "#64748b", fontFamily: "Inter_600SemiBold", fontSize: 12, marginTop: 2 },
+  friendName: { color: theme.text, fontFamily: theme.fonts.bold, fontSize: 16 },
+  friendCode: { color: theme.textDim, fontFamily: theme.fonts.semiBold, fontSize: 12, marginTop: 2 },
   removeBtn: { padding: 8 },
 });

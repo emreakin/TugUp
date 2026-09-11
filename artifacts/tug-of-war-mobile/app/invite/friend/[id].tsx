@@ -17,6 +17,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { IconSlot } from "@/components/IconSlot";
 import { apiFetch } from "@/lib/api";
 import { FRIENDS_ENABLED } from "@/lib/features";
+import { theme } from "@/constants/theme";
 
 function normalizeInviteId(raw: string | string[] | undefined): string | null {
   if (!raw) return null;
@@ -133,7 +134,7 @@ export default function FriendInviteScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0f172a" },
+  container: { flex: 1, backgroundColor: theme.bg },
   content: {
     flex: 1,
     alignItems: "center",
@@ -142,10 +143,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emoji: { fontSize: 56, marginBottom: 8 },
-  title: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 24 },
+  title: { color: theme.text, fontFamily: theme.fonts.bold, fontSize: 24 },
   message: {
-    color: "#94a3b8",
-    fontFamily: "Inter_400Regular",
+    color: theme.textMuted,
+    fontFamily: theme.fonts.regular,
     fontSize: 16,
     textAlign: "center",
     lineHeight: 22,
@@ -153,18 +154,18 @@ const styles = StyleSheet.create({
   },
   actions: { width: "100%", gap: 12, marginTop: 8 },
   primaryBtn: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: theme.modes.oneVsOne,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
   },
-  primaryBtnText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 },
+  primaryBtnText: { color: "#fff", fontFamily: theme.fonts.bold, fontSize: 16 },
   secondaryBtn: {
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
-  secondaryBtnText: { color: "#94a3b8", fontFamily: "Inter_600SemiBold", fontSize: 16 },
+  secondaryBtnText: { color: theme.textMuted, fontFamily: theme.fonts.semiBold, fontSize: 16 },
 });

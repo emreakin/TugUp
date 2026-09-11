@@ -22,8 +22,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { AppIcon, TrophyIcon } from "@/components/AppIcon";
+import { ArenaAtmosphere } from "@/components/ArenaAtmosphere";
 import { IconSlot } from "@/components/IconSlot";
 import { JokerIcon } from "@/components/JokerIcon";
+import { theme } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, JOKER_COIN_COST, type CoinBalance } from "@/lib/api";
 import {
@@ -94,6 +96,8 @@ interface Level {
   accentColor: string;
   description: string;
   displayScale: number;
+  /** Optional Mortal Kombat-style stage backdrop */
+  stageImage?: number;
 }
 
 interface LevelConfig {
@@ -105,6 +109,7 @@ interface LevelConfig {
   unitPerTap: number;
   driftPerSec: number;
   accentColor: string;
+  stageImage?: number;
 }
 
 function objectDisplaySize(displayScale: number) {
@@ -116,6 +121,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 1,
     emoji: "🎳",
     image: require("@/assets/images/bowling-ball.png"),
+    stageImage: require("@/assets/images/stages/bowling-alley.png"),
     weight: 6,
     timeLimit: 8,
     unitPerTap: 8,
@@ -126,6 +132,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 2,
     emoji: "🛋️",
     image: require("@/assets/images/couch.png"),
+    stageImage: require("@/assets/images/stages/home-living.png"),
     weight: 50,
     timeLimit: 8,
     unitPerTap: 4.5,
@@ -136,6 +143,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 3,
     emoji: "🌀",
     image: require("@/assets/images/washing-machine.png"),
+    stageImage: require("@/assets/images/stages/laundry-room.png"),
     weight: 100,
     timeLimit: 8,
     unitPerTap: 4,
@@ -146,6 +154,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 4,
     emoji: "🧊",
     image: require("@/assets/images/fridge.png"),
+    stageImage: require("@/assets/images/stages/kitchen.png"),
     weight: 200,
     timeLimit: 10,
     unitPerTap: 3.5,
@@ -156,6 +165,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 5,
     emoji: "🏍️",
     image: require("@/assets/images/atv.png"),
+    stageImage: require("@/assets/images/stages/dirt-trail.png"),
     weight: 300,
     timeLimit: 10,
     unitPerTap: 2,
@@ -166,6 +176,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 6,
     emoji: "🐂",
     image: require("@/assets/images/bull.png"),
+    stageImage: require("@/assets/images/stages/farm-pasture.png"),
     weight: 1000,
     timeLimit: 10,
     unitPerTap: 1.5,
@@ -176,6 +187,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 7,
     emoji: "🚗",
     image: require("@/assets/images/car.png"),
+    stageImage: require("@/assets/images/stages/city-road.png"),
     weight: 1500,
     timeLimit: 10,
     unitPerTap: 1.2,
@@ -186,6 +198,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 8,
     emoji: "🚙",
     image: require("@/assets/images/suv.png"),
+    stageImage: require("@/assets/images/stages/mountain-highway.png"),
     weight: 2500,
     timeLimit: 10,
     unitPerTap: 0.9,
@@ -196,6 +209,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 9,
     emoji: "🛻",
     image: require("@/assets/images/pickup-truck.png"),
+    stageImage: require("@/assets/images/stages/work-yard.png"),
     weight: 3500,
     timeLimit: 10,
     unitPerTap: 0.8,
@@ -206,16 +220,18 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 10,
     emoji: "🐘",
     image: require("@/assets/images/elephant.png"),
+    stageImage: require("@/assets/images/stages/savanna.png"),
     weight: 5000,
     timeLimit: 10,
     unitPerTap: 0.7,
     driftPerSec: 5.0,
-    accentColor: "#64748b",
+    accentColor: theme.textDim,
   },
   {
     id: 11,
     emoji: "🦖",
     image: require("@/assets/images/trex.png"),
+    stageImage: require("@/assets/images/stages/prehistoric.png"),
     weight: 7500,
     timeLimit: 12,
     unitPerTap: 0.5,
@@ -226,6 +242,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 12,
     emoji: "🐋",
     image: require("@/assets/images/whale.png"),
+    stageImage: require("@/assets/images/stages/ocean-pier.png"),
     weight: 10000,
     timeLimit: 12,
     unitPerTap: 0.45,
@@ -236,6 +253,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 13,
     emoji: "🚌",
     image: require("@/assets/images/bus.png"),
+    stageImage: require("@/assets/images/stages/bus-depot.png"),
     weight: 12000,
     timeLimit: 12,
     unitPerTap: 0.4,
@@ -246,6 +264,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 14,
     emoji: "⚓",
     image: require("@/assets/images/yacht.png"),
+    stageImage: require("@/assets/images/stages/marina.png"),
     weight: 15000,
     timeLimit: 15,
     unitPerTap: 0.35,
@@ -256,6 +275,7 @@ const LEVEL_CONFIGS: LevelConfig[] = [
     id: 15,
     emoji: "🏗️",
     image: require("@/assets/images/crane.png"),
+    stageImage: require("@/assets/images/stages/construction-site.png"),
     weight: 20000,
     timeLimit: 15,
     unitPerTap: 0.3,
@@ -1007,7 +1027,7 @@ export default function QuickGameScreen() {
   // ── Derived values ────────────────────────────────────────────────────────
   const remaining = Math.max(0, Math.ceil(WIN_THRESHOLD - position));
   const timerColor =
-    timeLeft <= 3 ? "#ef4444" : timeLeft <= 5 ? "#f59e0b" : "#f8fafc";
+    timeLeft <= 3 ? "#ef4444" : timeLeft <= 5 ? "#f59e0b" : theme.text;
   const playerColor = "#ef4444"; // player always red (same as 1v1 left default)
   const objectColor = currentLevel.accentColor;
 
@@ -1082,7 +1102,7 @@ export default function QuickGameScreen() {
                 key={level.id}
                 style={({ pressed }) => [
                   styles.levelCard,
-                  { borderColor: unlocked ? level.accentColor : "#334155" },
+                  { borderColor: unlocked ? level.accentColor : theme.border },
                   !unlocked && styles.levelCardLocked,
                   pressed && unlocked && { opacity: 0.85 },
                 ]}
@@ -1093,12 +1113,12 @@ export default function QuickGameScreen() {
                 <View style={styles.levelCardInfo}>
                   <View style={styles.levelNameRow}>
                     {!unlocked ? (
-                      <AppIcon name="lock-closed" size={14} color="#475569" />
+                      <AppIcon name="lock-closed" size={14} color={theme.textDim} />
                     ) : null}
                     <Text
                       style={[
                         styles.levelName,
-                        !unlocked && { color: "#475569" },
+                        !unlocked && { color: theme.textDim },
                       ]}
                     >
                       {level.name}
@@ -1115,7 +1135,7 @@ export default function QuickGameScreen() {
                 <View
                   style={[
                     styles.levelNumBadge,
-                    { backgroundColor: unlocked ? level.accentColor : "#334155" },
+                    { backgroundColor: unlocked ? level.accentColor : theme.border },
                   ]}
                 >
                   <Text style={styles.levelNumText}>#{level.id}</Text>
@@ -1195,7 +1215,7 @@ export default function QuickGameScreen() {
                 disabled={coinPurchasing || adLoading}
                 onPress={() => setEarnMethodVisible(false)}
               >
-                <Text style={[styles.jokerPickerBtnText, { color: "#64748b" }]}>
+                <Text style={[styles.jokerPickerBtnText, { color: theme.textDim }]}>
                   {t("common.cancel")}
                 </Text>
               </Pressable>
@@ -1294,7 +1314,7 @@ export default function QuickGameScreen() {
                 style={[styles.jokerPickerBtn, styles.jokerPickerBtnCancel]}
                 onPress={() => setJokerPickerVisible(false)}
               >
-                <Text style={[styles.jokerPickerBtnText, { color: "#64748b" }]}>{t("common.cancel")}</Text>
+                <Text style={[styles.jokerPickerBtnText, { color: theme.textDim }]}>{t("common.cancel")}</Text>
               </Pressable>
             </View>
           </View>
@@ -1320,7 +1340,7 @@ export default function QuickGameScreen() {
                   parent={Text}
                   style={styles.tutorialRowText}
                   components={{
-                    bold: <Text style={{ fontFamily: "Inter_700Bold", color: "#ef4444" }} />,
+                    bold: <Text style={{ fontFamily: theme.fonts.bold, color: "#ef4444" }} />,
                   }}
                 />
               </View>
@@ -1331,7 +1351,7 @@ export default function QuickGameScreen() {
               </View>
 
               <View style={styles.tutorialRow}>
-                <AppIcon name="shield-outline" size={18} color="#94a3b8" style={styles.tutorialBulletIcon} />
+                <AppIcon name="shield-outline" size={18} color={theme.textMuted} style={styles.tutorialBulletIcon} />
                 <Text style={styles.tutorialRowText}>{t("quickGame.tutorial.step3")}</Text>
               </View>
 
@@ -1342,9 +1362,9 @@ export default function QuickGameScreen() {
                   parent={Text}
                   style={styles.tutorialRowText}
                   components={{
-                    time: <Text style={{ fontFamily: "Inter_700Bold", color: "#3b82f6" }} />,
-                    bomb: <Text style={{ fontFamily: "Inter_700Bold", color: "#f59e0b" }} />,
-                    turbo: <Text style={{ fontFamily: "Inter_700Bold", color: "#a855f7" }} />,
+                    time: <Text style={{ fontFamily: theme.fonts.bold, color: "#3b82f6" }} />,
+                    bomb: <Text style={{ fontFamily: theme.fonts.bold, color: "#f59e0b" }} />,
+                    turbo: <Text style={{ fontFamily: theme.fonts.bold, color: "#a855f7" }} />,
                   }}
                 />
               </View>
@@ -1394,6 +1414,11 @@ export default function QuickGameScreen() {
       {/* Top + rope wrapper — takes all space above the fixed bottom controls */}
       <GestureDetector gesture={swipePullGesture}>
         <View style={styles.gameTop}>
+        <ArenaAtmosphere
+          stageImage={currentLevel.stageImage}
+          leftColor={playerColor}
+          rightColor={objectColor}
+        />
         {/* Header — same as 1v1 */}
         <View style={styles.header}>
           <Pressable
@@ -1505,6 +1530,7 @@ export default function QuickGameScreen() {
         </Animated.View>
 
         {/* Center line */}
+        <View style={styles.centerLineGlow} pointerEvents="none" />
         <View style={styles.centerLine} pointerEvents="none" />
 
         {/* Progress bar — same as 1v1 */}
@@ -1796,7 +1822,7 @@ export default function QuickGameScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0f172a" },
+  container: { flex: 1, backgroundColor: theme.bg },
 
   // Header — identical to 1v1
   header: {
@@ -1804,11 +1830,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
+    zIndex: 2,
   },
   backBtn: { padding: 10 },
-  backText: { color: "#94a3b8", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  backText: { color: theme.textMuted, fontSize: 15, fontFamily: theme.fonts.semiBold },
   headerTitle: {
-    color: "#f8fafc",
+    color: theme.text,
     fontSize: 18,
     fontWeight: "800",
     flex: 1,
@@ -1823,24 +1850,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     marginTop: 4,
+    zIndex: 2,
   },
   teamLabel: {
     fontSize: 17,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     flex: 1,
     textAlign: "center",
     letterSpacing: 0.5,
   },
   vsLabel: {
-    color: "#475569",
+    color: theme.textDim,
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
     marginHorizontal: 10,
   },
 
   // Timer
-  timerRow: { alignItems: "center", marginTop: 4, marginBottom: 2 },
-  timerText: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  timerRow: { alignItems: "center", marginTop: 4, marginBottom: 2, zIndex: 2 },
+  timerText: { fontSize: 22, fontFamily: theme.fonts.bold },
 
   // Rope area — identical to 1v1
   ropeArea: {
@@ -1850,6 +1878,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: ROPE_PAD,
     position: "relative",
     overflow: "visible",
+    marginHorizontal: -4,
+    borderRadius: 0,
+    zIndex: 2,
   },
   charSlot: {
     width: CHAR_WIDTH,
@@ -1886,7 +1917,8 @@ const styles = StyleSheet.create({
   progressBadgeImg: { width: 36, height: 36 },
   gameTop: {
     flex: 1,
-    overflow: "visible",
+    overflow: "hidden",
+    position: "relative",
   },
   gameBottom: {
     flexShrink: 0,
@@ -1900,8 +1932,8 @@ const styles = StyleSheet.create({
   },
   jokerSectionLabel: {
     fontSize: 11,
-    fontFamily: "Inter_700Bold",
-    color: "#64748b",
+    fontFamily: theme.fonts.bold,
+    color: theme.textDim,
     letterSpacing: 2,
     textTransform: "uppercase",
     marginBottom: 8,
@@ -1934,14 +1966,14 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   jokerBtnUsed: {
-    backgroundColor: "#1e293b",
-    borderColor: "#334155",
+    backgroundColor: theme.surface,
+    borderColor: theme.border,
     borderWidth: 1.5,
     opacity: 0.4,
   },
   jokerBtnText: {
     fontSize: 13,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#fbbf24",
     textAlign: "center",
   },
@@ -1961,12 +1993,25 @@ const styles = StyleSheet.create({
   centerLine: {
     position: "absolute",
     left: "50%",
-    top: 0,
-    bottom: 0,
-    width: 3,
-    backgroundColor: "#f8fafc",
-    opacity: 0.15,
+    top: "18%",
+    bottom: "22%",
+    width: 2,
+    backgroundColor: "rgba(242,235,227,0.28)",
+    opacity: 1,
     marginLeft: -1,
+    zIndex: 1,
+    borderRadius: 1,
+  },
+  centerLineGlow: {
+    position: "absolute",
+    left: "50%",
+    top: "22%",
+    bottom: "26%",
+    width: 10,
+    marginLeft: -5,
+    backgroundColor: "rgba(212,160,90,0.12)",
+    zIndex: 0,
+    borderRadius: 5,
   },
 
   // Progress — identical to 1v1
@@ -1975,14 +2020,17 @@ const styles = StyleSheet.create({
     bottom: 16,
     left: 16,
     right: 16,
+    zIndex: 3,
   },
   progressCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: "rgba(23,30,43,0.88)",
     borderRadius: 16,
     padding: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    borderWidth: 1,
+    borderColor: "rgba(212,160,90,0.18)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -1997,13 +2045,13 @@ const styles = StyleSheet.create({
     minWidth: 56,
     alignItems: "center",
   },
-  progressBadgeNum: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  progressBadgeLabel: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+  progressBadgeNum: { fontSize: 20, fontFamily: theme.fonts.bold },
+  progressBadgeLabel: { fontSize: 9, fontFamily: theme.fonts.bold, letterSpacing: 1 },
   progressTrack: {
     flex: 1,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#0f172a",
+    backgroundColor: theme.bg,
     flexDirection: "row",
     overflow: "visible",
     position: "relative",
@@ -2016,7 +2064,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: "#f8fafc",
+    backgroundColor: theme.text,
     marginLeft: -9,
     shadowColor: "#fff",
     shadowOffset: { width: 0, height: 0 },
@@ -2043,7 +2091,7 @@ const styles = StyleSheet.create({
   },
   pullBtnText: {
     fontSize: 24,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     letterSpacing: 2,
   },
 
@@ -2056,7 +2104,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 28,
     padding: 32,
     width: "100%",
@@ -2080,26 +2128,26 @@ const styles = StyleSheet.create({
   modalEmoji: { fontSize: 64 },
   modalTitle: {
     fontSize: 32,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     letterSpacing: 1,
   },
   modalSubtitle: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    color: "#94a3b8",
+    fontFamily: theme.fonts.regular,
+    color: theme.textMuted,
     textAlign: "center",
     marginBottom: 4,
   },
   modalRecord: {
     fontSize: 16,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#fbbf24",
     textAlign: "center",
     marginBottom: 12,
   },
   modalBtns: { width: "100%", gap: 10, marginTop: 4 },
   modalBtnMain: {
-    backgroundColor: "#ef4444",
+    backgroundColor: theme.ember,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
@@ -2107,25 +2155,25 @@ const styles = StyleSheet.create({
   modalBtnMainText: {
     color: "#fff",
     fontSize: 17,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
   },
   modalBtnSec: {
-    backgroundColor: "#334155",
+    backgroundColor: theme.border,
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: "center",
   },
   modalBtnSecText: {
-    color: "#94a3b8",
+    color: theme.textMuted,
     fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: theme.fonts.semiBold,
   },
 
   // Level selection
   levelSubtitle: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#64748b",
+    fontFamily: theme.fonts.regular,
+    color: theme.textDim,
     textAlign: "center",
     marginBottom: 8,
   },
@@ -2141,29 +2189,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
   jokerStockPillEmpty: {
-    borderColor: "#475569",
+    borderColor: theme.textDim,
     opacity: 0.5,
   },
   jokerStockText: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: "#f8fafc",
+    fontFamily: theme.fonts.semiBold,
+    color: theme.text,
   },
   jokerStockAdBtn: {
     backgroundColor: "#1e3a5f",
     borderColor: "#3b82f6",
   },
   jokerStockAdBtnDisabled: {
-    backgroundColor: "#1e293b",
-    borderColor: "#475569",
+    backgroundColor: theme.surface,
+    borderColor: theme.textDim,
     opacity: 0.5,
   },
   jokerPickerBtn: {
@@ -2185,18 +2233,18 @@ const styles = StyleSheet.create({
     color: "#78716c",
   },
   jokerPickerBtnDisabled: {
-    backgroundColor: "#1e293b",
-    borderColor: "#334155",
+    backgroundColor: theme.surface,
+    borderColor: theme.border,
     opacity: 0.45,
   },
   jokerPickerBtnCancel: {
     backgroundColor: "transparent",
-    borderColor: "#334155",
+    borderColor: theme.border,
     marginBottom: 0,
   },
   jokerPickerBtnText: {
     fontSize: 15,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#93c5fd",
   },
   tutorialOverlay: {
@@ -2207,10 +2255,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   tutorialCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: "#334155",
+    borderColor: theme.border,
     padding: 24,
     width: "100%",
     maxWidth: 360,
@@ -2222,8 +2270,8 @@ const styles = StyleSheet.create({
   },
   tutorialTitle: {
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    color: "#f8fafc",
+    fontFamily: theme.fonts.bold,
+    color: theme.text,
     textAlign: "center",
     marginBottom: 16,
   },
@@ -2244,12 +2292,12 @@ const styles = StyleSheet.create({
   tutorialRowText: {
     flex: 1,
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#cbd5e1",
+    fontFamily: theme.fonts.regular,
+    color: theme.textMuted,
     lineHeight: 20,
   },
   tutorialBtn: {
-    backgroundColor: "#ef4444",
+    backgroundColor: theme.ember,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
@@ -2257,7 +2305,7 @@ const styles = StyleSheet.create({
   },
   tutorialBtnText: {
     fontSize: 16,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#fff",
   },
   jokerStockAdBtnLoading: {
@@ -2265,7 +2313,7 @@ const styles = StyleSheet.create({
   },
   jokerStockAdText: {
     fontSize: 12,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#93c5fd",
   },
   levelList: {
@@ -2278,7 +2326,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   levelCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 16,
     borderWidth: 2,
     paddingVertical: 14,
@@ -2299,14 +2347,14 @@ const styles = StyleSheet.create({
   levelCardInfo: { flex: 1 },
   levelName: {
     fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#f8fafc",
+    fontFamily: theme.fonts.bold,
+    color: theme.text,
     marginBottom: 2,
   },
-  levelDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b" },
+  levelDesc: { fontSize: 12, fontFamily: theme.fonts.regular, color: theme.textDim },
   levelBestTime: {
     fontSize: 11,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#fbbf24",
     marginTop: 2,
   },
@@ -2319,7 +2367,7 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     fontSize: 13,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#fff",
   },
 
@@ -2332,7 +2380,7 @@ const styles = StyleSheet.create({
   },
   levelNumText: {
     fontSize: 10,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: "#fff",
   },
 });

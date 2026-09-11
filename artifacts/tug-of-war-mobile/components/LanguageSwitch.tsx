@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontFamily: "Inter_700Bold",
+    fontFamily: theme.fonts.bold,
     color: theme.textDim,
   },
   labelSelected: {

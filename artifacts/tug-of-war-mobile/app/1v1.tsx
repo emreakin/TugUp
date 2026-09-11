@@ -22,7 +22,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { AppIcon, TrophyIcon } from "@/components/AppIcon";
+import { ArenaAtmosphere } from "@/components/ArenaAtmosphere";
 import { IconSlot } from "@/components/IconSlot";
+import { theme } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, getApiHeaders, getApiUrl } from "@/lib/api";
 import {
@@ -571,7 +573,7 @@ export default function OneVsOneScreen() {
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.nameInputContent}>
-          <IconSlot name="people-outline" size={32} color="#94a3b8" style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }} />
+          <IconSlot name="people-outline" size={32} color={theme.textMuted} style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }} />
           <Text style={styles.nameInputTitle}>{t("oneVsOne.modeSelectTitle")}</Text>
           <Text style={styles.nameInputSubtitle}>{t("oneVsOne.modeSelectSubtitle")}</Text>
 
@@ -620,7 +622,7 @@ export default function OneVsOneScreen() {
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.nameInputContent}>
-          <IconSlot name="game-controller-outline" size={32} color="#94a3b8" style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }} />
+          <IconSlot name="game-controller-outline" size={32} color={theme.textMuted} style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 8 }} />
           <Text style={styles.nameInputTitle}>{t("oneVsOne.title")}</Text>
           <Text style={styles.nameInputSubtitle}>
             {matchMode === "invite"
@@ -630,7 +632,7 @@ export default function OneVsOneScreen() {
           <TextInput
             style={styles.nameInputField}
             placeholder={t("common.usernamePlaceholder")}
-            placeholderTextColor="#475569"
+            placeholderTextColor={theme.textDim}
             value={playerName}
             onChangeText={setPlayerName}
             maxLength={20}
@@ -727,7 +729,7 @@ export default function OneVsOneScreen() {
           </>
         ) : (
           <>
-            <ActivityIndicator color="#ef4444" size="large" />
+            <ActivityIndicator color={theme.ember} size="large" />
             <Text style={styles.connectingText}>{t("oneVsOne.connecting")}</Text>
           </>
         )}
@@ -753,7 +755,7 @@ export default function OneVsOneScreen() {
         {/* Matchup badge */}
         {matchup && (
           <View style={styles.matchupBadge}>
-            <IconSlot name="git-compare-outline" size={18} color="#94a3b8" backgroundColor="#1e293b" />
+            <IconSlot name="git-compare-outline" size={18} color={theme.textMuted} backgroundColor={theme.surface} />
             <Text style={[styles.matchupTeam, { color: leftColor }]}>{matchup.leftTeam}</Text>
             <Text style={styles.matchupVs}>{t("common.vs")}</Text>
             <Text style={[styles.matchupTeam, { color: rightColor }]}>{matchup.rightTeam}</Text>
@@ -772,24 +774,24 @@ export default function OneVsOneScreen() {
 
           {/* VS divider */}
           <View style={styles.waitingVsDivider}>
-            <View style={[styles.vsDividerLine, { backgroundColor: "#1e293b" }]} />
-            <View style={[styles.vsCircle, { borderColor: "#334155" }]}>
+            <View style={[styles.vsDividerLine, { backgroundColor: theme.surface }]} />
+            <View style={[styles.vsCircle, { borderColor: theme.border }]}>
               <Text style={styles.vsText}>VS</Text>
             </View>
-            <View style={[styles.vsDividerLine, { backgroundColor: "#1e293b" }]} />
+            <View style={[styles.vsDividerLine, { backgroundColor: theme.surface }]} />
           </View>
 
           {/* Opponent side */}
           <View style={styles.waitingSlot}>
             {phase === "waiting" ? (
               <>
-                <View style={[styles.avatarGlow, { backgroundColor: "#33415555" }]} />
+                <View style={[styles.avatarGlow, { backgroundColor: theme.border + "55" }]} />
                 <View style={styles.waitingAvatarPlaceholder}>
                   <Text style={styles.waitingAvatarQuestion}>?</Text>
                 </View>
                 <Text style={[styles.waitingSlotLabel, { color: opponentColor }]}>{opponentName ?? t("common.opponent")}</Text>
                 <View style={styles.waitingOpponentRow}>
-                  <ActivityIndicator color="#475569" size="small" />
+                  <ActivityIndicator color={theme.textDim} size="small" />
                   <Text style={styles.waitingForText}>{t("oneVsOne.waitingForOpponent")}</Text>
                 </View>
               </>
@@ -861,6 +863,7 @@ export default function OneVsOneScreen() {
 
       {/* Rope area */}
       <View style={styles.ropeArea}>
+        <ArenaAtmosphere leftColor={leftColor} rightColor={rightColor} />
         <Animated.View style={[styles.charSlot, { transform: [{ translateX: leftCharShift }] }]}>
           <Character color={leftColor} bounceAnim={leftCharAnim} />
         </Animated.View>
@@ -889,6 +892,7 @@ export default function OneVsOneScreen() {
           <Character color={rightColor} flipped bounceAnim={rightCharAnim} />
         </Animated.View>
 
+        <View style={styles.centerLineGlow} pointerEvents="none" />
         <View style={styles.centerLine} pointerEvents="none" />
 
         {/* Progress bar */}
@@ -956,7 +960,7 @@ export default function OneVsOneScreen() {
           <View style={styles.modalCard}>
             <View style={[styles.modalGlow, { backgroundColor: (isWinner ? myColor : opponentColor) + "33" }]} />
             <View style={{ marginBottom: 8 }}>
-              <TrophyIcon size={56} color={isWinner ? myColor : "#64748b"} />
+              <TrophyIcon size={56} color={isWinner ? myColor : theme.textDim} />
             </View>
             <Text style={[styles.modalTitle, { color: isWinner ? myColor : opponentColor }]}>
               {isWinner ? t("oneVsOne.youWon") : t("oneVsOne.youLost")}
@@ -992,44 +996,44 @@ export default function OneVsOneScreen() {
 // ─── Styles ────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0f172a" },
+  container: { flex: 1, backgroundColor: theme.bg },
   centered: { alignItems: "center", justifyContent: "center", gap: 20 },
 
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10 },
   backBtn: { padding: 10 },
-  headerTitle: { color: "#f8fafc", fontSize: 18, fontFamily: "Inter_700Bold", flex: 1, textAlign: "center" },
+  headerTitle: { color: theme.text, fontSize: 18, fontFamily: theme.fonts.bold, flex: 1, textAlign: "center" },
   headerSpacer: { width: 70 },
-  backText: { color: "#94a3b8", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  backText: { color: theme.textMuted, fontSize: 15, fontFamily: theme.fonts.semiBold },
 
   nameInputContent: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 32 },
   nameInputEmoji: { fontSize: 56 },
-  nameInputTitle: { color: "#f8fafc", fontSize: 28, fontWeight: "900", letterSpacing: 1 },
-  nameInputSubtitle: { color: "#64748b", fontSize: 14, fontWeight: "600" },
-  nameInputField: { backgroundColor: "#1e293b", borderRadius: 16, padding: 16, width: "100%", color: "#f8fafc", fontSize: 18, fontWeight: "600", borderWidth: 1, borderColor: "#334155" },
-  nameInputBtn: { backgroundColor: "#ef4444", borderRadius: 16, paddingVertical: 16, paddingHorizontal: 32, width: "100%", alignItems: "center" },
+  nameInputTitle: { color: theme.text, fontSize: 28, fontWeight: "900", letterSpacing: 1 },
+  nameInputSubtitle: { color: theme.textDim, fontSize: 14, fontWeight: "600" },
+  nameInputField: { backgroundColor: theme.surface, borderRadius: 16, padding: 16, width: "100%", color: theme.text, fontSize: 18, fontWeight: "600", borderWidth: 1, borderColor: theme.border },
+  nameInputBtn: { backgroundColor: theme.ember, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 32, width: "100%", alignItems: "center" },
   nameInputBtnPressed: { opacity: 0.8 },
   nameInputBtnText: { color: "#fff", fontSize: 18, fontWeight: "800", letterSpacing: 1 },
 
   modeCard: {
     width: "100%",
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 18,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
   modeCardInvite: { borderColor: "#3b82f6" },
   modeCardPressed: { opacity: 0.85 },
   modeCardEmoji: { fontSize: 32, width: 40, textAlign: "center" },
   modeCardText: { flex: 1 },
-  modeCardTitle: { color: "#f8fafc", fontFamily: "Inter_700Bold", fontSize: 17 },
-  modeCardDesc: { color: "#64748b", fontFamily: "Inter_400Regular", fontSize: 13, marginTop: 4 },
+  modeCardTitle: { color: theme.text, fontFamily: theme.fonts.bold, fontSize: 17 },
+  modeCardDesc: { color: theme.textDim, fontFamily: theme.fonts.regular, fontSize: 13, marginTop: 4 },
 
   shareInviteBtn: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: theme.modes.oneVsOne,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -1037,58 +1041,93 @@ const styles = StyleSheet.create({
     width: "90%",
     alignItems: "center",
   },
-  shareInviteBtnText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 },
+  shareInviteBtnText: { color: "#fff", fontFamily: theme.fonts.bold, fontSize: 15 },
 
   errorEmoji: { fontSize: 48 },
-  errorText: { color: "#ef4444", fontSize: 16, fontWeight: "600", textAlign: "center" },
-  retryBtn: { backgroundColor: "#ef4444", borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
+  errorText: { color: theme.ember, fontSize: 16, fontWeight: "600", textAlign: "center" },
+  retryBtn: { backgroundColor: theme.ember, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24 },
   retryBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  connectingText: { color: "#64748b", fontSize: 16, fontWeight: "600", marginTop: 12 },
+  connectingText: { color: theme.textDim, fontSize: 16, fontWeight: "600", marginTop: 12 },
 
   matchupBadge: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12 },
   matchupEmoji: { fontSize: 24 },
   matchupTeam: { fontSize: 16, fontWeight: "800" },
-  matchupVs: { color: "#64748b", fontSize: 14, fontWeight: "700" },
+  matchupVs: { color: theme.textDim, fontSize: 14, fontWeight: "700" },
 
   waitingArena: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingHorizontal: 16, gap: 12, flex: 1 },
   waitingSlot: { flex: 1, alignItems: "center", gap: 8 },
   avatarGlow: { width: 80, height: 80, borderRadius: 40, position: "absolute", opacity: 0.3 },
   waitingAvatar: { width: 80, height: 80 },
-  waitingAvatarPlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#334155", alignItems: "center", justifyContent: "center" },
-  waitingAvatarQuestion: { color: "#64748b", fontSize: 32, fontWeight: "800" },
+  waitingAvatarPlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.border, alignItems: "center", justifyContent: "center" },
+  waitingAvatarQuestion: { color: theme.textDim, fontSize: 32, fontWeight: "800" },
   waitingSlotLabel: { fontSize: 14, fontWeight: "700" },
   waitingReady: { fontSize: 12, fontWeight: "700" },
   waitingOpponentRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  waitingForText: { color: "#475569", fontSize: 12, fontWeight: "600" },
+  waitingForText: { color: theme.textDim, fontSize: 12, fontWeight: "600" },
   waitingVsDivider: { alignItems: "center", gap: 8 },
   vsDividerLine: { width: 2, height: 40, borderRadius: 1 },
   vsCircle: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  vsText: { color: "#64748b", fontSize: 12, fontWeight: "800" },
+  vsText: { color: theme.textDim, fontSize: 12, fontWeight: "800" },
   waitingFooter: { paddingVertical: 20, alignItems: "center" },
-  waitingFooterText: { color: "#475569", fontSize: 14, fontWeight: "600" },
+  waitingFooterText: { color: theme.textDim, fontSize: 14, fontWeight: "600" },
 
   countdownContainer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15,23,42,0.85)", alignItems: "center", justifyContent: "center", zIndex: 100 },
-  countdownNumber: { color: "#ef4444", fontSize: 120, fontWeight: "900" },
-  countdownLabel: { color: "#f8fafc", fontSize: 20, fontWeight: "800", letterSpacing: 4 },
+  countdownNumber: {
+    color: theme.ember,
+    fontSize: 120,
+    fontFamily: theme.fonts.display,
+    letterSpacing: 2,
+  },
+  countdownLabel: {
+    color: theme.text,
+    fontSize: 20,
+    fontFamily: theme.fonts.bold,
+    letterSpacing: 4,
+  },
 
   teamRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginTop: 8 },
-  teamLabel: { fontSize: 17, fontFamily: "Inter_700Bold", flex: 1, textAlign: "center", letterSpacing: 0.5 },
-  vsLabel: { color: "#475569", fontSize: 13, fontFamily: "Inter_600SemiBold", marginHorizontal: 10 },
+  teamLabel: { fontSize: 17, fontFamily: theme.fonts.bold, flex: 1, textAlign: "center", letterSpacing: 0.5 },
+  vsLabel: { color: theme.textDim, fontSize: 13, fontFamily: theme.fonts.semiBold, marginHorizontal: 10 },
 
   clickRow: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 40, marginTop: 6, marginBottom: 4 },
-  clickCount: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  clickCount: { fontSize: 20, fontFamily: theme.fonts.bold },
 
-  ropeArea: { flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: ROPE_PAD, position: "relative" },
-  charSlot: { width: CHAR_WIDTH, alignItems: "center", justifyContent: "center" },
+  ropeArea: { flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: ROPE_PAD, position: "relative", overflow: "hidden" },
+  charSlot: { width: CHAR_WIDTH, alignItems: "center", justifyContent: "center", zIndex: 2 },
   charWrap: { alignItems: "center" },
   charGlow: { width: 100, height: 100, borderRadius: 50, position: "absolute", opacity: 0.3 },
   charImage: { width: 100, height: 100 },
-  ropeWrap: { flex: 1, height: 140, overflow: "hidden" },
+  ropeWrap: { flex: 1, height: 140, overflow: "hidden", zIndex: 1 },
   ropeImgWrap: { position: "absolute", top: 64, height: 4 },
   ropeImg: { width: "100%", height: 4 },
-  centerLine: { position: "absolute", top: "50%", left: "50%", width: 5, height: 90, backgroundColor: "#ef4444", borderRadius: 2.5, marginLeft: -2.5, marginTop: -45, shadowColor: "#ef4444", shadowOpacity: 0.9, shadowRadius: 10, elevation: 8, zIndex: 10 },
+  centerLineGlow: {
+    position: "absolute",
+    left: "50%",
+    top: "22%",
+    bottom: "26%",
+    width: 10,
+    marginLeft: -5,
+    backgroundColor: "rgba(212,160,90,0.14)",
+    zIndex: 9,
+    borderRadius: 5,
+  },
+  centerLine: {
+    position: "absolute",
+    top: "18%",
+    bottom: "22%",
+    left: "50%",
+    width: 3,
+    backgroundColor: "rgba(242,235,227,0.55)",
+    borderRadius: 1.5,
+    marginLeft: -1.5,
+    shadowColor: theme.rope,
+    shadowOpacity: 0.55,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 10,
+  },
 
-  progressWrap: { position: "absolute", top: "50%", marginTop: 110, left: 16, right: 16, alignItems: "center" },
+  progressWrap: { position: "absolute", top: "50%", marginTop: 110, left: 16, right: 16, alignItems: "center", zIndex: 3 },
   progressCard: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(15,23,42,0.85)", borderRadius: 22, paddingVertical: 10, paddingHorizontal: 12, gap: 12, width: "100%", maxWidth: 360, borderWidth: 1, borderColor: "rgba(148,163,184,0.2)", shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   progressBadge: { minWidth: 56, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1.5, alignItems: "center" },
   progressBadgeNum: { fontSize: 20, fontWeight: "900", lineHeight: 24 },
@@ -1096,7 +1135,7 @@ const styles = StyleSheet.create({
   progressTrack: { flex: 1, height: 10, backgroundColor: "rgba(148,163,184,0.15)", borderRadius: 5, overflow: "visible", position: "relative" },
   progressFillLeft: { position: "absolute", top: 0, bottom: 0, left: 0, borderRadius: 5, opacity: 0.85 },
   progressFillRight: { position: "absolute", top: 0, bottom: 0, right: 0, borderRadius: 5, opacity: 0.85 },
-  progressMarker: { position: "absolute", top: -3, bottom: -3, width: 4, backgroundColor: "#f8fafc", borderRadius: 2, zIndex: 5 },
+  progressMarker: { position: "absolute", top: -3, bottom: -3, width: 4, backgroundColor: theme.text, borderRadius: 2, zIndex: 5 },
 
   buttonsRow: { flexDirection: "row", gap: 12, paddingHorizontal: 16 },
   buttonWrap: { flex: 1 },
@@ -1105,30 +1144,30 @@ const styles = StyleSheet.create({
   pullBtnText: { fontSize: 18, fontWeight: "900", letterSpacing: 1 },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center" },
-  modalCard: { backgroundColor: "#1e293b", borderRadius: 24, padding: 28, margin: 24, alignItems: "center", width: "90%", maxWidth: 360, position: "relative", overflow: "hidden" },
+  modalCard: { backgroundColor: theme.surface, borderRadius: 24, padding: 28, margin: 24, alignItems: "center", width: "90%", maxWidth: 360, position: "relative", overflow: "hidden" },
   modalGlow: { position: "absolute", top: -60, width: 200, height: 200, borderRadius: 100, alignSelf: "center" },
   modalEmoji: { fontSize: 56, marginBottom: 8 },
   modalTitle: { fontSize: 28, fontWeight: "900", letterSpacing: 1, marginBottom: 8 },
-  modalSubtitle: { color: "#94a3b8", fontSize: 14, fontWeight: "600", textAlign: "center", marginBottom: 12, lineHeight: 20 },
-  modalStats: { color: "#64748b", fontSize: 13, fontWeight: "600", marginBottom: 20 },
+  modalSubtitle: { color: theme.textMuted, fontSize: 14, fontWeight: "600", textAlign: "center", marginBottom: 12, lineHeight: 20 },
+  modalStats: { color: theme.textDim, fontSize: 13, fontWeight: "600", marginBottom: 20 },
   modalBtns: { flexDirection: "row", gap: 12, width: "100%" },
-  modalBtnMain: { flex: 1, backgroundColor: "#ef4444", borderRadius: 16, paddingVertical: 14, alignItems: "center" },
+  modalBtnMain: { flex: 1, backgroundColor: theme.ember, borderRadius: 16, paddingVertical: 14, alignItems: "center" },
   modalBtnMainText: { color: "#fff", fontSize: 15, fontWeight: "800" },
-  modalBtnSec: { flex: 1, backgroundColor: "#334155", borderRadius: 16, paddingVertical: 14, alignItems: "center" },
-  modalBtnSecText: { color: "#94a3b8", fontSize: 15, fontWeight: "700" },
+  modalBtnSec: { flex: 1, backgroundColor: theme.border, borderRadius: 16, paddingVertical: 14, alignItems: "center" },
+  modalBtnSecText: { color: theme.textMuted, fontSize: 15, fontWeight: "700" },
 
   // Onboarding styles
   onboardingOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 24 },
-  onboardingCard: { backgroundColor: "#1e293b", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, borderWidth: 1, borderColor: "#334155" },
-  onboardingStepCount: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#64748b", marginBottom: 8 },
-  onboardingTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#f8fafc", marginBottom: 12 },
-  onboardingText: { fontSize: 15, fontFamily: "Inter_400Regular", color: "#cbd5e1", lineHeight: 22, marginBottom: 24 },
+  onboardingCard: { backgroundColor: theme.surface, borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, borderWidth: 1, borderColor: theme.border },
+  onboardingStepCount: { fontSize: 13, fontFamily: theme.fonts.semiBold, color: theme.textDim, marginBottom: 8 },
+  onboardingTitle: { fontSize: 22, fontFamily: theme.fonts.bold, color: theme.text, marginBottom: 12 },
+  onboardingText: { fontSize: 15, fontFamily: theme.fonts.regular, color: theme.textMuted, lineHeight: 22, marginBottom: 24 },
   onboardingDots: { flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 24 },
-  onboardingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#334155" },
-  onboardingDotActive: { backgroundColor: "#ef4444", width: 20 },
+  onboardingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.border },
+  onboardingDotActive: { backgroundColor: theme.ember, width: 20 },
   onboardingButtons: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  onboardingBtnPrimary: { flex: 1, backgroundColor: "#ef4444", borderRadius: 14, paddingVertical: 14, alignItems: "center" },
-  onboardingBtnSecondary: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: "#334155" },
-  onboardingBtnPrimaryText: { color: "#fff", fontSize: 15, fontFamily: "Inter_700Bold" },
-  onboardingBtnSecondaryText: { color: "#94a3b8", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  onboardingBtnPrimary: { flex: 1, backgroundColor: theme.ember, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  onboardingBtnSecondary: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: theme.border },
+  onboardingBtnPrimaryText: { color: "#fff", fontSize: 15, fontFamily: theme.fonts.bold },
+  onboardingBtnSecondaryText: { color: theme.textMuted, fontSize: 15, fontFamily: theme.fonts.semiBold },
 });

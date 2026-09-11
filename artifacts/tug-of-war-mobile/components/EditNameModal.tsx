@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import { theme } from "@/constants/theme";
 
 const MAX_NAME_LENGTH = 24;
 
@@ -67,7 +68,7 @@ export function EditNameModal({
             value={name}
             onChangeText={setName}
             placeholder={t("common.usernamePlaceholder")}
-            placeholderTextColor="#64748b"
+            placeholderTextColor={theme.textDim}
             maxLength={MAX_NAME_LENGTH}
             autoCapitalize="words"
             autoFocus
@@ -89,7 +90,7 @@ export function EditNameModal({
               disabled={saving}
             >
               {saving ? (
-                <ActivityIndicator color="#0f172a" />
+                <ActivityIndicator color={theme.bg} />
               ) : (
                 <Text style={styles.saveText}>{t("profile.save")}</Text>
               )}
@@ -104,7 +105,7 @@ export function EditNameModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.75)",
+    backgroundColor: theme.overlay,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
@@ -112,39 +113,39 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 360,
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.surface,
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
   title: {
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    color: "#f8fafc",
+    fontFamily: theme.fonts.bold,
+    color: theme.text,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: "#94a3b8",
+    fontFamily: theme.fonts.semiBold,
+    color: theme.textMuted,
     marginBottom: 16,
   },
   input: {
-    backgroundColor: "#0f172a",
+    backgroundColor: theme.bg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: "#f8fafc",
-    fontFamily: "Inter_600SemiBold",
+    color: theme.text,
+    fontFamily: theme.fonts.semiBold,
     fontSize: 16,
   },
   error: {
     marginTop: 8,
-    color: "#f87171",
-    fontFamily: "Inter_600SemiBold",
+    color: theme.danger,
+    fontFamily: theme.fonts.semiBold,
     fontSize: 13,
   },
   row: {
@@ -161,24 +162,24 @@ const styles = StyleSheet.create({
     minHeight: 46,
   },
   cancelBtn: {
-    backgroundColor: "#0f172a",
+    backgroundColor: theme.bg,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: theme.border,
   },
   cancelText: {
-    color: "#94a3b8",
-    fontFamily: "Inter_600SemiBold",
+    color: theme.textMuted,
+    fontFamily: theme.fonts.semiBold,
     fontSize: 15,
   },
   saveBtn: {
-    backgroundColor: "#fbbf24",
+    backgroundColor: theme.gold,
   },
   saveBtnDisabled: {
     opacity: 0.7,
   },
   saveText: {
-    color: "#0f172a",
-    fontFamily: "Inter_700Bold",
+    color: theme.bg,
+    fontFamily: theme.fonts.bold,
     fontSize: 15,
   },
 });
