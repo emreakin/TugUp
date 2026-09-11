@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getApiBase, getApiHeaders } from "@/lib/api";
+import { feedbackPull, feedbackWin, preloadFeedback } from "@/lib/feedback";
 import { AppIcon, CrownIcon, TrophyIcon } from "@/components/AppIcon";
 
 // AdMob is loaded dynamically on native only — see ad-helper.native.ts
@@ -328,6 +329,10 @@ export default function GameScreen() {
     [matchupId, t]
   );
 
+  useEffect(() => {
+    preloadFeedback();
+  }, []);
+
   const handlePull = useCallback(
     async (side: "left" | "right") => {
       if (gameState !== "playing") return;
@@ -338,6 +343,7 @@ export default function GameScreen() {
         return;
       }
 
+      feedbackPull();
       pulseButton(side);
       setPendingSide(side);
 
@@ -375,9 +381,11 @@ export default function GameScreen() {
         const clamped = Math.max(-threshold, Math.min(threshold, data.offset));
         setOffset(clamped);
         if (clamped <= -threshold) {
+          feedbackWin();
           setGameState("left_wins");
           setScore((s) => ({ ...s, left: s.left + 1 }));
         } else if (clamped >= threshold) {
+          feedbackWin();
           setGameState("right_wins");
           setScore((s) => ({ ...s, right: s.right + 1 }));
         }

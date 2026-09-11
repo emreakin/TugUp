@@ -25,6 +25,13 @@ import { AppIcon, TrophyIcon } from "@/components/AppIcon";
 import { IconSlot } from "@/components/IconSlot";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, getApiHeaders, getApiUrl } from "@/lib/api";
+import {
+  feedbackLose,
+  feedbackPull,
+  feedbackTick,
+  feedbackWin,
+  preloadFeedback,
+} from "@/lib/feedback";
 import { FRIENDS_ENABLED } from "@/lib/features";
 
 // ─── Constants ────────────────────────────────────────────────────
@@ -482,9 +489,14 @@ export default function OneVsOneScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    preloadFeedback();
+  }, []);
+
   // ── Handle pull ───────────────────────────────────────────────
   const handlePull = useCallback(async () => {
     if (phase !== "playing") return;
+    feedbackPull();
     pulseButton(mySide);
 
     const roomId = roomIdRef.current;
@@ -521,18 +533,30 @@ export default function OneVsOneScreen() {
   // ── Countdown timer (local) ───────────────────────────────────────
   useEffect(() => {
     if (phase !== "countdown") return;
+    let remaining = countdownNum;
+    feedbackTick(remaining <= 3);
     const timer = setInterval(() => {
-      setCountdownNum(n => {
-        if (n <= 1) {
-          clearInterval(timer);
-          setPhase("playing");
-          return 0;
-        }
-        return n - 1;
-      });
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(timer);
+        setCountdownNum(0);
+        setPhase("playing");
+        return;
+      }
+      setCountdownNum(remaining);
+      feedbackTick(remaining <= 3);
     }, 1000);
     return () => clearInterval(timer);
+    // Only restart when entering countdown; capture starting number once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
+
+  // Win / lose feedback when match ends
+  useEffect(() => {
+    if (phase !== "ended" || !winner) return;
+    if (winner === mySide) feedbackWin();
+    else feedbackLose();
+  }, [phase, winner, mySide]);
 
   // ── Mode select screen ─────────────────────────────────────────
   if (phase === "mode_select") {

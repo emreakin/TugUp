@@ -22,37 +22,41 @@ function isValidTeam(v: unknown): v is string {
 
 // GET /api/suggestions — ordered by vote count desc, with hasVoted per IP
 router.get("/", async (req, res) => {
-  const ipHash = hashIp(getClientIp(req));
+  try {
+    const ipHash = hashIp(getClientIp(req));
 
-  const rows = await db
-    .select({
-      id: matchupSuggestionsTable.id,
-      leftTeam: matchupSuggestionsTable.leftTeam,
-      rightTeam: matchupSuggestionsTable.rightTeam,
-      votes: sql<number>`cast(count(${suggestionVotesTable.id}) as int)`,
-    })
-    .from(matchupSuggestionsTable)
-    .leftJoin(
-      suggestionVotesTable,
-      eq(matchupSuggestionsTable.id, suggestionVotesTable.suggestionId),
-    )
-    .groupBy(matchupSuggestionsTable.id)
-    .orderBy(desc(sql`count(${suggestionVotesTable.id})`));
+    const rows = await db
+      .select({
+        id: matchupSuggestionsTable.id,
+        leftTeam: matchupSuggestionsTable.leftTeam,
+        rightTeam: matchupSuggestionsTable.rightTeam,
+        votes: sql<number>`cast(count(${suggestionVotesTable.id}) as int)`,
+      })
+      .from(matchupSuggestionsTable)
+      .leftJoin(
+        suggestionVotesTable,
+        eq(matchupSuggestionsTable.id, suggestionVotesTable.suggestionId),
+      )
+      .groupBy(matchupSuggestionsTable.id)
+      .orderBy(desc(sql`count(${suggestionVotesTable.id})`));
 
-  // Check which ones the current IP has voted on
-  const myVotes = await db
-    .select({ suggestionId: suggestionVotesTable.suggestionId })
-    .from(suggestionVotesTable)
-    .where(eq(suggestionVotesTable.ipHash, ipHash));
+    const myVotes = await db
+      .select({ suggestionId: suggestionVotesTable.suggestionId })
+      .from(suggestionVotesTable)
+      .where(eq(suggestionVotesTable.ipHash, ipHash));
 
-  const votedSet = new Set(myVotes.map((v) => v.suggestionId));
+    const votedSet = new Set(myVotes.map((v) => v.suggestionId));
 
-  const result = rows.map((r) => ({
-    ...r,
-    hasVoted: votedSet.has(r.id),
-  }));
-
-  res.json(result);
+    res.json(
+      rows.map((r) => ({
+        ...r,
+        hasVoted: votedSet.has(r.id),
+      })),
+    );
+  } catch (err) {
+    console.error("suggestions error", err);
+    res.status(500).json({ error: reqT(req, "serverError") });
+  }
 });
 
 // POST /api/suggestions — create a new suggestion

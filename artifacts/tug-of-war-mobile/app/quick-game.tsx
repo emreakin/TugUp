@@ -26,6 +26,13 @@ import { IconSlot } from "@/components/IconSlot";
 import { JokerIcon } from "@/components/JokerIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, JOKER_COIN_COST, type CoinBalance } from "@/lib/api";
+import {
+  feedbackLose,
+  feedbackPull,
+  feedbackTick,
+  feedbackWin,
+  preloadFeedback,
+} from "@/lib/feedback";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CHAR_WIDTH = 100;
@@ -504,6 +511,10 @@ export default function QuickGameScreen() {
     [PROGRESS_KEY],
   );
 
+  useEffect(() => {
+    preloadFeedback();
+  }, []);
+
   // ── Win / Lose modal animations (trigger on phase change) ────────────────
   useEffect(() => {
     if (phase === "win") {
@@ -529,6 +540,8 @@ export default function QuickGameScreen() {
   useEffect(() => {
     if (phase !== "celebrating") return;
     const outcome = pendingResultRef.current;
+    if (outcome === "win") feedbackWin();
+    else if (outcome === "lose") feedbackLose();
 
     if (outcome === "win") {
       // Object gets fully dragged off-screen (left) and topples over
@@ -685,6 +698,9 @@ export default function QuickGameScreen() {
       timerIntervalRef.current = setInterval(() => {
         timeLeftRef.current -= 1;
         setTimeLeft(timeLeftRef.current);
+        if (timeLeftRef.current > 0 && timeLeftRef.current <= 3) {
+          feedbackTick(true);
+        }
         if (timeLeftRef.current <= 0) {
           clearIntervals();
           pendingResultRef.current = "lose";
@@ -707,6 +723,7 @@ export default function QuickGameScreen() {
   // ── Tap handler ───────────────────────────────────────────────────────────
   const handlePull = useCallback(() => {
     if (phase !== "playing") return;
+    feedbackPull();
 
     const multiplier = Date.now() < turboUntilRef.current ? TURBO_MULTIPLIER : 1;
     positionRef.current = Math.min(
