@@ -24,7 +24,7 @@ import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { AppIcon, TrophyIcon } from "@/components/AppIcon";
 import { ArenaAtmosphere } from "@/components/ArenaAtmosphere";
 import { IconSlot } from "@/components/IconSlot";
-import { JokerIcon } from "@/components/JokerIcon";
+import { JokerIcon, type JokerType } from "@/components/JokerIcon";
 import { theme } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, JOKER_COIN_COST, type CoinBalance } from "@/lib/api";
@@ -45,22 +45,30 @@ const OBJECT_DISPLAY_SCALES: Record<number, number> = {
   3: 0.62, // çamaşır makinesi
   4: 1.0, // buzdolabı
   5: 1.0, // ATV
-  6: 0.95, // boğa
-  7: 1.0, // araba — insan boyuna yakın
-  8: 1.08, // SUV
-  9: 1.28, // kamyonet — arabadan belirgin büyük
-  10: 1.55, // fil
-  11: 1.85, // T-Rex
-  12: 1.65, // balina
-  13: 2.0, // otobüs
-  14: 2.15, // yat
-  15: 2.45, // vinç
+  6: 1.35, // boğa — insanüstü
+  7: 1.5, // araba
+  8: 1.65, // SUV
+  9: 1.8, // kamyonet
+  10: 1.95, // fil
+  11: 2.15, // T-Rex
+  12: 2.05, // balina
+  13: 2.3, // otobüs
+  14: 2.45, // yat
+  15: 2.7, // vinç
 };
 // İp, cisim PNG'sindeki şeffaf kenarı kapatmak için hafif bindirme
 const OBJECT_ROPE_OVERLAP = 8;
 const ROPE_PAD = 4;
 const WINDOW_WIDTH = Dimensions.get("window").width;
-const MAX_TRANSLATION = WINDOW_WIDTH / 2 - ROPE_PAD - CHAR_WIDTH / 2;
+const WINDOW_HEIGHT = Dimensions.get("window").height;
+// Avatar + ip + cisim bu genişliğe sığmak zorunda
+const ARENA_WIDTH = WINDOW_WIDTH - 2 * ROPE_PAD;
+// Tam çekişte ipten görünür kalan minimum parça
+const ROPE_MIN_WIDTH = 28;
+const MAX_TRANSLATION = Math.round(ARENA_WIDTH * 0.28);
+// Avatar + cisim için kalan bütçe — çekiş mesafesi her seviyede aynı kalır
+const ARENA_SPRITE_BUDGET = ARENA_WIDTH - ROPE_MIN_WIDTH - MAX_TRANSLATION;
+const ARENA_SPRITE_MAX_HEIGHT = Math.round(WINDOW_HEIGHT * 0.26);
 const WIN_THRESHOLD = 100;
 const TICK_MS = 50;
 const SWIPE_PIXELS_PER_PULL = 36;
@@ -112,8 +120,20 @@ interface LevelConfig {
   stageImage?: number;
 }
 
-function objectDisplaySize(displayScale: number) {
-  return Math.round(CHAR_WIDTH * displayScale);
+/**
+ * Avatar ile cismi tek bir sahne ölçeğine bağlar: aradaki oran her zaman
+ * displayScale kadar kalır, toplam genişlik ekranı asla taşmaz.
+ */
+function arenaMetrics(displayScale: number) {
+  const widthScale = ARENA_SPRITE_BUDGET / (CHAR_WIDTH * (1 + displayScale));
+  const heightScale =
+    ARENA_SPRITE_MAX_HEIGHT / (CHAR_WIDTH * Math.max(1, displayScale));
+  const scale = Math.min(1, widthScale, heightScale);
+  return {
+    charSize: Math.round(CHAR_WIDTH * scale),
+    objectSize: Math.round(CHAR_WIDTH * displayScale * scale),
+    ropeOverlap: Math.round(OBJECT_ROPE_OVERLAP * scale),
+  };
 }
 
 const LEVEL_CONFIGS: LevelConfig[] = [
@@ -300,12 +320,14 @@ function buildLevels(t: (key: string, options?: Record<string, unknown>) => stri
 function Character({
   bounceAnim,
   color,
+  size,
   fallRotate,
   fallOpacity,
   victoryScale,
 }: {
   bounceAnim: Animated.Value;
   color: string;
+  size: number;
   fallRotate?: Animated.Value;
   fallOpacity?: Animated.Value;
   victoryScale?: Animated.Value;
@@ -330,12 +352,18 @@ function Character({
       <View
         style={[
           styles.charGlow,
-          { backgroundColor: color + "33", shadowColor: color },
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: color + "33",
+            shadowColor: color,
+          },
         ]}
       />
       <Image
         source={CHARACTER_IMG}
-        style={styles.charImage}
+        style={{ width: size, height: size }}
         resizeMode="contain"
       />
     </Animated.View>
@@ -348,7 +376,8 @@ function ObjectDisplay({
   image,
   bounceAnim,
   color,
-  displayScale,
+  size,
+  ropeOverlap,
   fallRotate,
   fallOpacity,
   victoryScale,
@@ -357,12 +386,13 @@ function ObjectDisplay({
   image?: any;
   bounceAnim: Animated.Value;
   color: string;
-  displayScale: number;
+  size: number;
+  ropeOverlap: number;
   fallRotate?: Animated.Value;
   fallOpacity?: Animated.Value;
   victoryScale?: Animated.Value;
 }) {
-  const objectSize = objectDisplaySize(displayScale);
+  const objectSize = size;
   const transform: any[] = [{ translateX: bounceAnim }];
   if (victoryScale) transform.push({ scale: victoryScale });
   if (fallRotate) {
@@ -381,7 +411,7 @@ function ObjectDisplay({
         {
           width: objectSize,
           height: objectSize,
-          marginLeft: -OBJECT_ROPE_OVERLAP,
+          marginLeft: -ropeOverlap,
           transform,
           opacity: fallOpacity ?? 1,
         },
@@ -429,6 +459,10 @@ export default function QuickGameScreen() {
   const [phase, setPhase] = useState<Phase>("levels");
   const [currentLevelId, setCurrentLevelId] = useState(1);
   const currentLevel = levels.find((level) => level.id === currentLevelId) ?? levels[0];
+  const arena = useMemo(
+    () => arenaMetrics(currentLevel.displayScale),
+    [currentLevel.displayScale],
+  );
   const [unlockedUpTo, setUnlockedUpTo] = useState(1);
   const [timeLeft, setTimeLeft] = useState(0);
   // Global joker pool — persisted across sessions
@@ -447,6 +481,8 @@ export default function QuickGameScreen() {
   const [coinPurchasing, setCoinPurchasing] = useState(false);
   // Joker picker modal (shown after rewarded ad / coin purchase)
   const [jokerPickerVisible, setJokerPickerVisible] = useState(false);
+  // Info popup when tapping stock pills on the levels screen
+  const [jokerInfoType, setJokerInfoType] = useState<JokerType | null>(null);
   const { ensureSession } = useAuth();
   // Best times per level (levelId -> remaining seconds at win)
   const [bestTimes, setBestTimes] = useState<Record<number, number>>({});
@@ -487,7 +523,7 @@ export default function QuickGameScreen() {
   const playerCharShift = useRef(new Animated.Value(0)).current; // always 0 (player doesn't move)
   const objectCharShift = useRef(new Animated.Value(0)).current; // object slides toward center
   const ropeWrapWidthAnim = useRef(
-    new Animated.Value(WINDOW_WIDTH - 2 * CHAR_WIDTH - 2 * ROPE_PAD),
+    new Animated.Value(ARENA_WIDTH - 2 * CHAR_WIDTH),
   ).current;
 
   // ── Load & save progress via AsyncStorage ────────────────────────────────
@@ -704,7 +740,10 @@ export default function QuickGameScreen() {
       playerCharAnim.setValue(0);
       objectCharAnim.setValue(0);
       progressAnim.setValue(0.5);
-      ropeWrapWidthAnim.setValue(WINDOW_WIDTH - 2 * CHAR_WIDTH - 2 * ROPE_PAD);
+      const levelArena = arenaMetrics(level.displayScale);
+      ropeWrapWidthAnim.setValue(
+        ARENA_WIDTH - levelArena.charSize - levelArena.objectSize,
+      );
 
       // Burst drift: every 3s (levels 1–5) or 5s (levels 6+) the object snaps back by 10
       const burstInterval = level.id >= 6 ? 5000 : 3000;
@@ -1054,18 +1093,42 @@ export default function QuickGameScreen() {
 
         {/* Joker stock + earn bar */}
         <View style={styles.jokerStockBar}>
-          <View style={styles.jokerStockPill}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.jokerStockPill,
+              pressed && styles.jokerStockPillPressed,
+            ]}
+            onPress={() => setJokerInfoType("time")}
+            accessibilityRole="button"
+            accessibilityLabel={t("quickGame.jokerInfo.timeTitle")}
+          >
             <JokerIcon type="time" size={14} />
             <Text style={styles.jokerStockText}>{timeJokersLeft}/3</Text>
-          </View>
-          <View style={styles.jokerStockPill}>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.jokerStockPill,
+              pressed && styles.jokerStockPillPressed,
+            ]}
+            onPress={() => setJokerInfoType("turbo")}
+            accessibilityRole="button"
+            accessibilityLabel={t("quickGame.jokerInfo.turboTitle")}
+          >
             <JokerIcon type="turbo" size={14} />
             <Text style={styles.jokerStockText}>{turboJokersLeft}/3</Text>
-          </View>
-          <View style={styles.jokerStockPill}>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.jokerStockPill,
+              pressed && styles.jokerStockPillPressed,
+            ]}
+            onPress={() => setJokerInfoType("bomb")}
+            accessibilityRole="button"
+            accessibilityLabel={t("quickGame.jokerInfo.bombTitle")}
+          >
             <JokerIcon type="bomb" size={14} />
             <Text style={styles.jokerStockText}>{bombJokersLeft}/3</Text>
-          </View>
+          </Pressable>
           <Pressable
             style={[
               styles.jokerStockPill,
@@ -1089,6 +1152,56 @@ export default function QuickGameScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {/* Joker info popup (levels screen stock pills) */}
+        <Modal
+          visible={jokerInfoType !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setJokerInfoType(null)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setJokerInfoType(null)}
+          >
+            <Pressable
+              style={styles.jokerInfoCard}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {jokerInfoType ? (
+                <>
+                  <View style={styles.jokerInfoIconWrap}>
+                    <JokerIcon type={jokerInfoType} size={32} />
+                  </View>
+                  <Text style={styles.jokerInfoTitle}>
+                    {t(`quickGame.jokerInfo.${jokerInfoType}Title`)}
+                  </Text>
+                  <Text style={styles.jokerInfoBody}>
+                    {t(`quickGame.jokerInfo.${jokerInfoType}Body`)}
+                  </Text>
+                  <Text style={styles.jokerInfoStock}>
+                    {t("quickGame.jokerInfo.stock", {
+                      count:
+                        jokerInfoType === "time"
+                          ? timeJokersLeft
+                          : jokerInfoType === "turbo"
+                            ? turboJokersLeft
+                            : bombJokersLeft,
+                    })}
+                  </Text>
+                  <Pressable
+                    style={styles.jokerInfoBtn}
+                    onPress={() => setJokerInfoType(null)}
+                  >
+                    <Text style={styles.jokerInfoBtnText}>
+                      {t("quickGame.jokerInfo.gotIt")}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <ScrollView
           style={styles.levelList}
@@ -1459,11 +1572,15 @@ export default function QuickGameScreen() {
         <View style={styles.ropeArea}>
         {/* Player (left) — human avatar */}
         <Animated.View
-          style={[styles.charSlot, { transform: [{ translateX: playerCharShift }] }]}
+          style={[
+            styles.charSlot,
+            { width: arena.charSize, transform: [{ translateX: playerCharShift }] },
+          ]}
         >
           <Character
             bounceAnim={playerCharAnim}
             color={playerColor}
+            size={arena.charSize}
             fallRotate={phase === "celebrating" ? playerFallRotate : undefined}
             fallOpacity={phase === "celebrating" ? playerFallOpacity : undefined}
             victoryScale={
@@ -1504,13 +1621,13 @@ export default function QuickGameScreen() {
           </Animated.View>
         </View>
 
-        {/* Object (right) — slot always CHAR_WIDTH so rope meets left edge;
-            small/large sprites left-align and may overflow right */}
+        {/* Object (right) — slot is exactly the sprite width so the rope meets
+            its left edge and nothing spills past the screen */}
         <Animated.View
           style={[
             styles.charSlot,
             styles.objectCharSlot,
-            { transform: [{ translateX: objectCharShift }] },
+            { width: arena.objectSize, transform: [{ translateX: objectCharShift }] },
           ]}
         >
           <ObjectDisplay
@@ -1518,7 +1635,8 @@ export default function QuickGameScreen() {
             image={currentLevel.image}
             bounceAnim={objectCharAnim}
             color={objectColor}
-            displayScale={currentLevel.displayScale}
+            size={arena.objectSize}
+            ropeOverlap={arena.ropeOverlap}
             fallRotate={phase === "celebrating" ? objectFallRotate : undefined}
             fallOpacity={phase === "celebrating" ? objectFallOpacity : undefined}
             victoryScale={
@@ -1883,7 +2001,6 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   charSlot: {
-    width: CHAR_WIDTH,
     alignItems: "center",
     justifyContent: "center",
     overflow: "visible",
@@ -1910,9 +2027,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  charImage: { width: 100, height: 100 },
-  objectEmoji: { fontSize: 72, textAlign: "center" },
-  objectImage: { width: 100, height: 100 },
   levelEmojiImg: { width: 50, height: 50 },
   progressBadgeImg: { width: 36, height: 36 },
   gameTop: {
@@ -1993,25 +2107,29 @@ const styles = StyleSheet.create({
   centerLine: {
     position: "absolute",
     left: "50%",
-    top: "18%",
-    bottom: "22%",
-    width: 2,
-    backgroundColor: "rgba(242,235,227,0.28)",
-    opacity: 1,
-    marginLeft: -1,
+    top: "12%",
+    bottom: "16%",
+    width: 3,
+    backgroundColor: theme.ropeSoft,
+    marginLeft: -1.5,
     zIndex: 1,
-    borderRadius: 1,
+    borderRadius: 2,
+    shadowColor: theme.rope,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    elevation: 6,
   },
   centerLineGlow: {
     position: "absolute",
     left: "50%",
-    top: "22%",
-    bottom: "26%",
-    width: 10,
-    marginLeft: -5,
-    backgroundColor: "rgba(212,160,90,0.12)",
+    top: "14%",
+    bottom: "18%",
+    width: 12,
+    marginLeft: -6,
+    backgroundColor: "rgba(212,160,90,0.22)",
     zIndex: 0,
-    borderRadius: 5,
+    borderRadius: 6,
   },
 
   // Progress — identical to 1v1
@@ -2196,6 +2314,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
+  jokerStockPillPressed: {
+    opacity: 0.75,
+  },
   jokerStockPillEmpty: {
     borderColor: theme.textDim,
     opacity: 0.5,
@@ -2204,6 +2325,64 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: theme.fonts.semiBold,
     color: theme.text,
+  },
+  jokerInfoCard: {
+    backgroundColor: theme.surfaceRaised,
+    borderRadius: 24,
+    padding: 28,
+    marginHorizontal: 24,
+    width: "90%",
+    maxWidth: 360,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  jokerInfoIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  jokerInfoTitle: {
+    fontSize: 20,
+    fontFamily: theme.fonts.bold,
+    color: theme.text,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  jokerInfoBody: {
+    fontSize: 14,
+    fontFamily: theme.fonts.regular,
+    color: theme.textMuted,
+    textAlign: "center",
+    lineHeight: 21,
+    marginBottom: 14,
+  },
+  jokerInfoStock: {
+    fontSize: 13,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.rope,
+    marginBottom: 20,
+  },
+  jokerInfoBtn: {
+    backgroundColor: theme.ember,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderWidth: 1,
+    borderColor: theme.emberDeep,
+    alignSelf: "stretch",
+    alignItems: "center",
+  },
+  jokerInfoBtnText: {
+    color: theme.white,
+    fontSize: 15,
+    fontFamily: theme.fonts.bold,
   },
   jokerStockAdBtn: {
     backgroundColor: "#1e3a5f",

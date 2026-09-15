@@ -56,6 +56,9 @@
   "online": {
     "title": "TUG OF WAR",
     "subtitle": "Mücadele Seç",
+    "wakingUp": "Sunucu uyanıyor, birkaç saniye sürebilir…",
+    "loadFailedTitle": "Mücadeleler yüklenemedi",
+    "loadFailedText": "Sunucuya ulaşamadık. Bağlantını kontrol edip tekrar dene.",
     "pending": "BEKLEMEDEKİLER",
     "suggestSection": "MÜCADELE ÖNER",
     "submit": "TALEP ET",
@@ -185,6 +188,16 @@
     "turboDone": "Bitti",
     "turboJoker": "Turbo ({{count}})",
     "turboActive": "{{seconds}}s",
+    "jokerInfo": {
+      "timeTitle": "+2 sn Joker",
+      "timeBody": "Oyun sırasında kullanınca süreye +2 saniye ekler. Depoda en fazla 3 adet tutulabilir.",
+      "turboTitle": "Turbo Güç",
+      "turboBody": "3 saniye boyunca her çekişin 2 kat etkili olur. Seviye 5’te açılır. Depoda en fazla 3 adet tutulabilir.",
+      "bombTitle": "+%25 Joker",
+      "bombBody": "Objeyi anında %25 daha yaklaştırır. Tur başına en fazla 2 kez kullanılır. Seviye 8’de açılır. Depoda en fazla 3 adet tutulabilir.",
+      "stock": "Depo: {{count}}/3",
+      "gotIt": "Anladım"
+    },
     "pulled": "ÇEKİLDİ",
     "youWon": "KAZANDIN!",
     "timeUp": "SÜRE DOLDU!",

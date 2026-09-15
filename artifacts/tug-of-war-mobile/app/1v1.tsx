@@ -755,7 +755,7 @@ export default function OneVsOneScreen() {
         {/* Matchup badge */}
         {matchup && (
           <View style={styles.matchupBadge}>
-            <IconSlot name="git-compare-outline" size={18} color={theme.textMuted} backgroundColor={theme.surface} />
+            <Text style={styles.matchupEmoji}>{matchup.emoji}</Text>
             <Text style={[styles.matchupTeam, { color: leftColor }]}>{matchup.leftTeam}</Text>
             <Text style={styles.matchupVs}>{t("common.vs")}</Text>
             <Text style={[styles.matchupTeam, { color: rightColor }]}>{matchup.rightTeam}</Text>

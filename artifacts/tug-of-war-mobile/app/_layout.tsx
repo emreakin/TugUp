@@ -8,7 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -16,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LocaleProvider } from "@/contexts/LocaleContext";
+import { warmUpApi } from "@/lib/api";
 import { initMobileAds } from "@/native/ad-helper";
 import "@/lib/i18n";
 
@@ -56,6 +57,16 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  // Uyuyan API'yi kullanıcı menüde gezinirken uyandırmaya başla: Online'a
+  // bastığında 50 saniyelik spin-up'ın çoğu çoktan geçmiş olur.
+  useEffect(() => {
+    warmUpApi();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") warmUpApi();
+    });
+    return () => sub.remove();
+  }, []);
 
   if (!fontsLoaded && !fontError) return null;
 

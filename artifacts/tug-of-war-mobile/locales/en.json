@@ -56,6 +56,9 @@
   "online": {
     "title": "TUG OF WAR",
     "subtitle": "Choose a Matchup",
+    "wakingUp": "Waking the server up, this may take a few seconds…",
+    "loadFailedTitle": "Couldn't load matchups",
+    "loadFailedText": "We couldn't reach the server. Check your connection and try again.",
     "pending": "COMING SOON",
     "suggestSection": "SUGGEST A MATCHUP",
     "submit": "SUBMIT",
@@ -185,6 +188,16 @@
     "turboDone": "Used up",
     "turboJoker": "Turbo ({{count}})",
     "turboActive": "{{seconds}}s",
+    "jokerInfo": {
+      "timeTitle": "+2 s Joker",
+      "timeBody": "During a round, adds +2 seconds to the timer. You can store up to 3.",
+      "turboTitle": "Turbo Power",
+      "turboBody": "For 3 seconds, every pull is twice as strong. Unlocks at level 5. You can store up to 3.",
+      "bombTitle": "+25% Joker",
+      "bombBody": "Instantly moves the object 25% closer. Max 2 uses per round. Unlocks at level 8. You can store up to 3.",
+      "stock": "Stock: {{count}}/3",
+      "gotIt": "Got it"
+    },
     "pulled": "PULLED",
     "youWon": "YOU WON!",
     "timeUp": "TIME'S UP!",

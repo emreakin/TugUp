@@ -1,13 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -20,8 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { AppIcon, CrownIcon, TrophyIcon } from "@/components/AppIcon";
-import { IconSlot } from "@/components/IconSlot";
-import { getApiBase, getApiHeaders } from "@/lib/api";
+import { fetchWithTimeout, getApiBase, getApiHeaders } from "@/lib/api";
 import { theme } from "@/constants/theme";
 
 interface Matchup {
@@ -45,6 +45,13 @@ interface Suggestion {
 }
 
 const ONBOARDING_KEY = "@tugup_onboarding_online_done";
+/** Son başarılı mücadele listesi — sunucu uyurken ekranı anında boyamak için. */
+const MATCHUPS_CACHE_KEY = "@tugup_matchups_cache";
+/** Bu süreyi aşan istekte "sunucu uyanıyor" ipucunu göster. */
+const COLD_START_HINT_DELAY_MS = 4000;
+const MATCHUPS_FETCH_ATTEMPTS = 2;
+/** "Mücadele Öner" bölümü geçici olarak kapalı — kod açık kalsın. */
+const SUGGESTIONS_ENABLED = false;
 
 const ONBOARDING_STEP_KEYS = [
   { title: "online.onboarding.step1Title", text: "online.onboarding.step1Text" },
@@ -66,29 +73,65 @@ export default function OnlineScreen() {
 
   const [matchups, setMatchups] = useState<Matchup[]>([]);
   const [matchupsLoading, setMatchupsLoading] = useState(true);
+  const [matchupsError, setMatchupsError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [wakingUp, setWakingUp] = useState(false);
+  /** Elimizde gösterilecek liste var mı (cache ya da başarılı istek). */
+  const hasDataRef = useRef(false);
 
   const [leftTeam, setLeftTeam] = useState("");
   const [rightTeam, setRightTeam] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(SUGGESTIONS_ENABLED);
   const [votingId, setVotingId] = useState<number | null>(null);
 
-  const fetchMatchups = useCallback(async () => {
-    try {
-      const res = await fetch(`${getApiBase()}/matchups`, {
-        headers: getApiHeaders({}, { json: false }),
-      });
-      if (res.ok) setMatchups(await res.json());
-    } catch { /* ignore */ } finally {
-      setMatchupsLoading(false);
-    }
-  }, []);
+  const fetchMatchups = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      if (background) setRefreshing(true);
+      else setMatchupsError(false);
+      const hintTimer = setTimeout(
+        () => setWakingUp(true),
+        COLD_START_HINT_DELAY_MS,
+      );
+      try {
+        for (let attempt = 1; attempt <= MATCHUPS_FETCH_ATTEMPTS; attempt++) {
+          try {
+            const res = await fetchWithTimeout(`${getApiBase()}/matchups`, {
+              headers: getApiHeaders({}, { json: false }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const rows = (await res.json()) as Matchup[];
+            setMatchups(rows);
+            setMatchupsError(false);
+            hasDataRef.current = true;
+            AsyncStorage.setItem(
+              MATCHUPS_CACHE_KEY,
+              JSON.stringify(rows),
+            ).catch(() => {});
+            return;
+          } catch (err) {
+            if (attempt === MATCHUPS_FETCH_ATTEMPTS) throw err;
+            await new Promise((r) => setTimeout(r, 1500 * attempt));
+          }
+        }
+      } catch {
+        // Cache'ten gelen liste duruyorsa kullanıcıyı hata ekranına düşürmeyelim
+        if (!hasDataRef.current) setMatchupsError(true);
+      } finally {
+        clearTimeout(hintTimer);
+        setWakingUp(false);
+        setRefreshing(false);
+        setMatchupsLoading(false);
+      }
+    },
+    [],
+  );
 
   const fetchSuggestions = useCallback(async () => {
     try {
-      const res = await fetch(`${getApiBase()}/suggestions`, {
+      const res = await fetchWithTimeout(`${getApiBase()}/suggestions`, {
         headers: getApiHeaders({}, { json: false }),
       });
       if (res.ok) setSuggestions(await res.json());
@@ -97,9 +140,31 @@ export default function OnlineScreen() {
     }
   }, []);
 
+  // Önce cache'i boya, sonra ağdan tazele: sunucu uykudaysa bile ekran dolu gelir
   useEffect(() => {
-    fetchMatchups();
-    fetchSuggestions();
+    let active = true;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(MATCHUPS_CACHE_KEY);
+        if (!active) return;
+        if (raw) {
+          const cached = JSON.parse(raw) as Matchup[];
+          if (Array.isArray(cached) && cached.length > 0) {
+            hasDataRef.current = true;
+            setMatchups(cached);
+            setMatchupsLoading(false);
+          }
+        }
+      } catch {
+        // Bozuk cache'i yok say, ağdan taze liste gelecek
+      }
+      if (!active) return;
+      fetchMatchups({ background: hasDataRef.current });
+      if (SUGGESTIONS_ENABLED) fetchSuggestions();
+    })();
+    return () => {
+      active = false;
+    };
   }, [fetchMatchups, fetchSuggestions]);
 
   // Check onboarding on first mount
@@ -219,6 +284,14 @@ export default function OnlineScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchMatchups({ background: true })}
+            tintColor={theme.rope}
+            colors={[theme.rope]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -237,7 +310,45 @@ export default function OnlineScreen() {
 
         {/* Matchup list — only active; pending/inactive hidden */}
         {matchupsLoading ? (
-          <ActivityIndicator color="#ef4444" style={{ marginVertical: 32 }} />
+          <View style={styles.list}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={[styles.card, styles.cardSkeleton]}>
+                <View style={styles.skeletonIcon} />
+                <View style={styles.cardMiddle}>
+                  <View style={styles.skeletonLine} />
+                  <View style={[styles.skeletonLine, styles.skeletonLineShort]} />
+                </View>
+              </View>
+            ))}
+            {wakingUp ? (
+              <View style={styles.statusRow}>
+                <ActivityIndicator color={theme.rope} size="small" />
+                <Text style={styles.statusText}>{t("online.wakingUp")}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : matchupsError ? (
+          <View style={styles.errorBox}>
+            <AppIcon
+              name="cloud-offline-outline"
+              size={30}
+              color={theme.textMuted}
+            />
+            <Text style={styles.errorTitle}>{t("online.loadFailedTitle")}</Text>
+            <Text style={styles.errorText}>{t("online.loadFailedText")}</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.retryBtn,
+                pressed && styles.retryBtnPressed,
+              ]}
+              onPress={() => {
+                setMatchupsLoading(true);
+                fetchMatchups();
+              }}
+            >
+              <Text style={styles.retryBtnText}>{t("online.retry")}</Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={styles.list}>
             {matchups
@@ -254,12 +365,7 @@ export default function OnlineScreen() {
                     ]}
                     onPress={() => handleSelect(m)}
                   >
-                    <IconSlot
-                      name="git-compare-outline"
-                      size={22}
-                      color={theme.textMuted}
-                      backgroundColor={theme.bg}
-                    />
+                    <Text style={styles.cardEmoji}>{m.emoji}</Text>
                     <View style={styles.cardMiddle}>
                       <View style={styles.teamNameRow}>
                         {leftLeads ? <CrownIcon size={12} /> : null}
@@ -283,7 +389,7 @@ export default function OnlineScreen() {
         )}
 
         {/* Mücadele Öner — geçici olarak gizli (kod açık kalsın) */}
-        {false && (
+        {SUGGESTIONS_ENABLED && (
           <>
             <View style={styles.divider} />
             <Text style={styles.sectionTitle}>{t("online.suggestSection")}</Text>
@@ -490,6 +596,79 @@ const styles = StyleSheet.create({
   cardInactive: {
     opacity: 0.45,
     backgroundColor: theme.surface,
+  },
+  cardSkeleton: {
+    opacity: 0.5,
+  },
+  skeletonIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: theme.bg,
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.bg,
+    alignSelf: "stretch",
+    marginVertical: 3,
+  },
+  skeletonLineShort: {
+    width: "55%",
+    alignSelf: "center",
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+  },
+  statusText: {
+    fontSize: 13,
+    fontFamily: theme.fonts.semiBold,
+    color: theme.textMuted,
+  },
+  errorBox: {
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginVertical: 24,
+    padding: 24,
+    borderRadius: 18,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontFamily: theme.fonts.bold,
+    color: theme.text,
+    textAlign: "center",
+  },
+  errorText: {
+    fontSize: 13,
+    fontFamily: theme.fonts.regular,
+    color: theme.textMuted,
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  retryBtn: {
+    marginTop: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 26,
+    borderRadius: 12,
+    backgroundColor: theme.ember,
+    borderWidth: 1,
+    borderColor: theme.emberDeep,
+  },
+  retryBtnPressed: {
+    opacity: 0.8,
+  },
+  retryBtnText: {
+    fontSize: 14,
+    fontFamily: theme.fonts.bold,
+    color: theme.white,
   },
   cardEmoji: {
     fontSize: 28,

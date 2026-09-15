@@ -2,6 +2,7 @@ import { createServer } from "http";
 import { ensureSchema } from "@workspace/db";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { seedDefaultMatchups } from "./routes/matchups";
 
 const rawPort = process.env["PORT"];
 
@@ -57,6 +58,13 @@ async function main() {
       { err },
       "Database unreachable after retries — fix DATABASE_URL (Aiven hostname). API is up for health checks only.",
     );
+    return;
+  }
+
+  try {
+    await seedDefaultMatchups();
+  } catch (err) {
+    logger.error({ err }, "Seeding default matchups failed");
   }
 }
 

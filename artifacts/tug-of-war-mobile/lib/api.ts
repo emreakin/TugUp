@@ -16,6 +16,48 @@ export function getApiBase(): string {
   return `${getApiUrl()}/api`;
 }
 
+/**
+ * Render free plan 15 dk hareketsizlikten sonra servisi uyutuyor ve uyanması
+ * 50 saniyeyi aşabiliyor. İstekler bu yüzden alışıldık timeout'lardan çok daha
+ * uzun beklemeye hazır olmak zorunda.
+ */
+export const COLD_START_TIMEOUT_MS = 75_000;
+
+/** AbortController ile timeout'lanan fetch — asılı kalan istekleri keser. */
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {},
+): Promise<Response> {
+  const { timeoutMs = COLD_START_TIMEOUT_MS, ...rest } = options;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...rest, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const WARM_UP_THROTTLE_MS = 60_000;
+let lastWarmUpAt = 0;
+
+/**
+ * Ateşle-ve-unut ping: uyuyan instance, kullanıcı hâlâ ana ekrandayken uyanmaya
+ * başlasın. /api/healthz veritabanına dokunmuyor ve sunucu portu şema
+ * hazırlığından önce bind ettiği için servis tam hazır olmadan da yanıt veriyor.
+ */
+export function warmUpApi(): void {
+  const now = Date.now();
+  if (now - lastWarmUpAt < WARM_UP_THROTTLE_MS) return;
+  lastWarmUpAt = now;
+  fetchWithTimeout(`${getApiBase()}/healthz`, {
+    headers: getApiHeaders({}, { json: false }),
+  }).catch(() => {
+    // Uyandırma başarısızsa sonraki deneme throttle'a takılmasın
+    lastWarmUpAt = 0;
+  });
+}
+
 export function getApiHeaders(
   extra?: Record<string, string>,
   options?: { json?: boolean },
@@ -83,10 +125,10 @@ export type DailyClaimResult =
 
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit & { token?: string | null } = {},
+  options: RequestInit & { token?: string | null; timeoutMs?: number } = {},
 ): Promise<T> {
   const { token, headers, ...rest } = options;
-  const res = await fetch(`${getApiUrl()}${path}`, {
+  const res = await fetchWithTimeout(`${getApiUrl()}${path}`, {
     ...rest,
     headers: {
       ...getApiHeaders(),

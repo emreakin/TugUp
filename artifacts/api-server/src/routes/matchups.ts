@@ -41,7 +41,11 @@ const DEFAULT_MATCHUPS = [
   },
 ];
 
-async function seedDefaultMatchups() {
+/**
+ * Boot sırasında bir kez çağrılır (bkz. index.ts). Modül import'unda çalıştırmak,
+ * cold start'ta henüz uyanmakta olan veritabanı bağlantısıyla yarışıyordu.
+ */
+export async function seedDefaultMatchups() {
   for (const m of DEFAULT_MATCHUPS) {
     await db
       .insert(matchupsTable)
@@ -49,9 +53,6 @@ async function seedDefaultMatchups() {
       .onConflictDoNothing();
   }
 }
-
-// Seed on module load
-seedDefaultMatchups().catch(() => {});
 
 // GET /api/matchups
 router.get("/", async (req, res) => {
