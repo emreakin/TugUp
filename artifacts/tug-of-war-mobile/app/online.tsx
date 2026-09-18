@@ -21,7 +21,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SubtleBannerSlot } from "@/components/HomeBannerAd";
 import { AppIcon, CrownIcon, TrophyIcon } from "@/components/AppIcon";
-import { fetchWithTimeout, getApiBase, getApiHeaders } from "@/lib/api";
+import {
+  fetchThroughColdStart,
+  fetchWithTimeout,
+  getApiBase,
+  getApiHeaders,
+} from "@/lib/api";
 import { theme } from "@/constants/theme";
 
 interface Matchup {
@@ -49,7 +54,6 @@ const ONBOARDING_KEY = "@tugup_onboarding_online_done";
 const MATCHUPS_CACHE_KEY = "@tugup_matchups_cache";
 /** Bu süreyi aşan istekte "sunucu uyanıyor" ipucunu göster. */
 const COLD_START_HINT_DELAY_MS = 4000;
-const MATCHUPS_FETCH_ATTEMPTS = 2;
 /** "Mücadele Öner" bölümü geçici olarak kapalı — kod açık kalsın. */
 const SUGGESTIONS_ENABLED = false;
 
@@ -96,26 +100,19 @@ export default function OnlineScreen() {
         COLD_START_HINT_DELAY_MS,
       );
       try {
-        for (let attempt = 1; attempt <= MATCHUPS_FETCH_ATTEMPTS; attempt++) {
-          try {
-            const res = await fetchWithTimeout(`${getApiBase()}/matchups`, {
-              headers: getApiHeaders({}, { json: false }),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const rows = (await res.json()) as Matchup[];
-            setMatchups(rows);
-            setMatchupsError(false);
-            hasDataRef.current = true;
-            AsyncStorage.setItem(
-              MATCHUPS_CACHE_KEY,
-              JSON.stringify(rows),
-            ).catch(() => {});
-            return;
-          } catch (err) {
-            if (attempt === MATCHUPS_FETCH_ATTEMPTS) throw err;
-            await new Promise((r) => setTimeout(r, 1500 * attempt));
-          }
-        }
+        const res = await fetchThroughColdStart(`${getApiBase()}/matchups`, {
+          headers: getApiHeaders({}, { json: false }),
+          // 503 gördüğümüz an ipucunu göster: sunucu gerçekten uyanıyor
+          onWaking: () => setWakingUp(true),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const rows = (await res.json()) as Matchup[];
+        setMatchups(rows);
+        setMatchupsError(false);
+        hasDataRef.current = true;
+        AsyncStorage.setItem(MATCHUPS_CACHE_KEY, JSON.stringify(rows)).catch(
+          () => {},
+        );
       } catch {
         // Cache'ten gelen liste duruyorsa kullanıcıyı hata ekranına düşürmeyelim
         if (!hasDataRef.current) setMatchupsError(true);

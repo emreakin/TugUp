@@ -1,0 +1,55 @@
+name: Keep API warm
+
+# Render free plan 15 dakika trafik almayan servisi uyutuyor ve uyanma ~52 saniye
+# suruyor. Bu is, aktif saatlerde servisi ayakta tutar.
+#
+# Neden cron-job.org degil: ucretsiz planinda istek zaman asimi 30 saniye, yani
+# soguk baslatmayi bekleyemiyor ve her denemeyi basarisiz sayiyor. Burada
+# zaman asimini kendimiz belirledigimiz icin uyanma gercekten tamamlaniyor.
+#
+# Instance-hour butcesi: 750 saat/ay. Asagidaki pencere 16 saat/gun ~= 480-496
+# saat/ay birakir. 7/24 ping 31 gunluk aylarda 744 saate cikip butceyi
+# tuketir ve Render tum free servisleri ay sonuna kadar askiya alir - yapmayin.
+
+on:
+  schedule:
+    # UTC. Turkiye yil boyu UTC+3 (DST yok) -> 06-21 UTC = 09:00-00:50 TRT.
+    - cron: "*/10 6-21 * * *"
+  workflow_dispatch:
+
+# Gecikmeli tetiklenen calismalar ust uste binmesin.
+concurrency:
+  group: keep-api-warm
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Ping /api/healthz
+        env:
+          URL: https://tugup-api.onrender.com/api/healthz
+        run: |
+          for attempt in 1 2 3; do
+            echo "--- deneme $attempt ---"
+            # --max-time 120: soguk baslatma ~52 sn, rahat pay birakiyoruz.
+            # Cloudflare ucu origin uykudayken ya istegi bekletiyor ya da
+            # aninda 503 donuyor; ikisi de origin'i uyandiriyor.
+            out=$(curl -sS -o /tmp/body.txt -w '%{http_code} %{time_total}' \
+                    --max-time 120 "$URL" || echo "000 timeout")
+            code=${out%% *}
+            secs=${out##* }
+            echo "http=$code sure=${secs}s govde=$(head -c 200 /tmp/body.txt)"
+
+            if [ "$code" = "200" ]; then
+              echo "API ayakta."
+              exit 0
+            fi
+
+            echo "Uyanma sinyali (http=$code), 20 sn sonra tekrar denenecek."
+            sleep 20
+          done
+
+          echo "::error::3 denemede de /api/healthz 200 donmedi. API gercekten kapali olabilir."
+          exit 1

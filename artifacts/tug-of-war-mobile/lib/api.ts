@@ -38,6 +38,54 @@ export async function fetchWithTimeout(
   }
 }
 
+/**
+ * Render'ın router'ı, uyuyan instance uyanırken isteği bekletmek yerine hızlıca
+ * 502/503/504 döndürebiliyor. Bu "hata" değil, "birazdan hazır" anlamına gelir.
+ */
+export function isColdStartStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
+}
+
+/**
+ * Spin-up'ı bekleyen fetch: 503'e anında pes etmek yerine uyanma penceresi
+ * boyunca artan aralıklarla yeniden dener. Yalnızca idempotent isteklerde
+ * tekrar dener — POST'u yeniden göndermek yan etki yaratabilir.
+ */
+export async function fetchThroughColdStart(
+  url: string,
+  options: RequestInit & { deadlineMs?: number; onWaking?: () => void } = {},
+): Promise<Response> {
+  const { deadlineMs = COLD_START_TIMEOUT_MS, onWaking, ...rest } = options;
+  const method = (rest.method ?? "GET").toUpperCase();
+  const retryable = method === "GET" || method === "HEAD";
+  const startedAt = Date.now();
+  const remaining = () => deadlineMs - (Date.now() - startedAt);
+
+  let waitMs = 2000;
+  let lastError: unknown;
+
+  while (remaining() > 0) {
+    try {
+      const res = await fetchWithTimeout(url, {
+        ...rest,
+        timeoutMs: remaining(),
+      });
+      if (!retryable || !isColdStartStatus(res.status)) return res;
+      lastError = new Error(`HTTP ${res.status}`);
+      onWaking?.();
+    } catch (err) {
+      lastError = err;
+      if (!retryable) throw err;
+    }
+    const left = remaining();
+    if (left <= 0) break;
+    await new Promise((r) => setTimeout(r, Math.min(waitMs, left)));
+    waitMs = Math.min(Math.round(waitMs * 1.6), 8000);
+  }
+
+  throw lastError ?? new Error("Request failed");
+}
+
 const WARM_UP_THROTTLE_MS = 60_000;
 let lastWarmUpAt = 0;
 
