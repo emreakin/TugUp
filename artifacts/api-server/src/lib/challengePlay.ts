@@ -16,7 +16,9 @@ import {
 } from "@workspace/db";
 import {
   ONLINE_CHALLENGES,
+  ONLINE_COOLDOWNS_ENABLED,
   ONLINE_DAILY_X2_MAX,
+  effectiveCooldownSeconds,
   isOnlineChallengeType,
   remainingDailyX2,
   type OnlineChallengeType,
@@ -90,21 +92,19 @@ export async function getChallengeStatusesForUser(
   const out = {} as Record<OnlineChallengeType, ChallengeStatusEntry>;
 
   for (const type of Object.keys(ONLINE_CHALLENGES) as OnlineChallengeType[]) {
-    const def = ONLINE_CHALLENGES[type];
+    const cooldownSec = effectiveCooldownSeconds(type);
     const row = byType.get(type);
     const last = row?.lastPlayedAt ? row.lastPlayedAt.getTime() : null;
     const endsAt =
-      last != null && def.cooldownSeconds > 0
-        ? last + def.cooldownSeconds * 1000
-        : null;
+      last != null && cooldownSec > 0 ? last + cooldownSec * 1000 : null;
     const remaining =
       endsAt != null ? Math.max(0, Math.ceil((endsAt - now) / 1000)) : 0;
 
     out[type] = {
-      available: remaining === 0,
-      cooldownSeconds: def.cooldownSeconds,
+      available: !ONLINE_COOLDOWNS_ENABLED || remaining === 0,
+      cooldownSeconds: cooldownSec,
       cooldownEndsAt: endsAt != null && remaining > 0 ? new Date(endsAt).toISOString() : null,
-      secondsRemaining: remaining,
+      secondsRemaining: ONLINE_COOLDOWNS_ENABLED ? remaining : 0,
     };
   }
   return out;
@@ -115,6 +115,7 @@ async function assertCooldownClear(
   matchupId: string,
   challengeType: OnlineChallengeType,
 ): Promise<void> {
+  if (!ONLINE_COOLDOWNS_ENABLED) return;
   const statuses = await getChallengeStatusesForUser(userId, matchupId);
   const status = statuses[challengeType];
   if (!status.available) {
@@ -345,7 +346,7 @@ export async function completeChallenge(params: {
     : null;
 
   const cooldownEndsAt = new Date(
-    Date.now() + ONLINE_CHALLENGES[challengeType].cooldownSeconds * 1000,
+    Date.now() + effectiveCooldownSeconds(challengeType) * 1000,
   ).toISOString();
 
   return {

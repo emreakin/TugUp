@@ -17,6 +17,11 @@ export type OnlineChallengeDefinition = {
   i18nKey: "rapidPull" | "heavyPull" | "perfectPull";
 };
 
+/**
+ * Dev: false = no cooldowns. Flip to true (with server flag) before launch.
+ */
+export const ONLINE_COOLDOWNS_ENABLED = false;
+
 export const ONLINE_CHALLENGES: OnlineChallengeDefinition[] = [
   {
     type: "rapid_pull",

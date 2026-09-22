@@ -1,9 +1,5 @@
 /**
  * Online challenge definitions + future x2 / cooldown helpers.
- *
- * Challenge GAMEPLAY is NOT implemented yet. This module centralizes rules so
- * the next iteration can award points / enforce cooldowns / x2 without
- * scattering magic numbers.
  */
 
 export type OnlineChallengeType = "rapid_pull" | "heavy_pull" | "perfect_pull";
@@ -16,6 +12,12 @@ export type OnlineChallengeDefinition = {
   /** All three support future rewarded-ad x2. */
   supportsDoubleReward: boolean;
 };
+
+/**
+ * Dev/staging: set false before production launch to enforce real cooldowns.
+ * When false, start/complete skip cooldown checks and status always reports available.
+ */
+export const ONLINE_COOLDOWNS_ENABLED = false;
 
 export const ONLINE_CHALLENGES: Record<OnlineChallengeType, OnlineChallengeDefinition> = {
   rapid_pull: {
@@ -37,6 +39,12 @@ export const ONLINE_CHALLENGES: Record<OnlineChallengeType, OnlineChallengeDefin
     supportsDoubleReward: true,
   },
 };
+
+/** Effective cooldown for a challenge (0 while ONLINE_COOLDOWNS_ENABLED is false). */
+export function effectiveCooldownSeconds(type: OnlineChallengeType): number {
+  if (!ONLINE_COOLDOWNS_ENABLED) return 0;
+  return ONLINE_CHALLENGES[type].cooldownSeconds;
+}
 
 /** Global max x2 rewarded uses across ALL Online challenges per UTC day. */
 export const ONLINE_DAILY_X2_MAX = 10;

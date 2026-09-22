@@ -16,7 +16,6 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ArenaAtmosphere } from "@/components/ArenaAtmosphere";
 import { AppIcon } from "@/components/AppIcon";
 import { theme, type } from "@/constants/theme";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,12 +28,13 @@ import {
 } from "@/lib/api";
 import {
   ONLINE_CHALLENGES,
+  ONLINE_COOLDOWNS_ENABLED,
   type OnlineChallengeType,
 } from "@/lib/onlineChallenges";
 
 const { width: WINDOW_WIDTH } = Dimensions.get("window");
 const POLL_MS = 4_000;
-const ROPE_MAX_SHIFT = WINDOW_WIDTH * 0.18;
+const POWER_BAR_WIDTH = WINDOW_WIDTH - 32 - 24; // screen pad + card pad
 
 function formatPoints(n: number, locale: string): string {
   try {
@@ -102,7 +102,7 @@ export default function OnlineBattleScreen() {
   >({});
   const [startingRapid, setStartingRapid] = useState(false);
 
-  const ropeAnim = useRef(new Animated.Value(0)).current;
+  const leftFillAnim = useRef(new Animated.Value(50)).current;
   const inFlight = useRef(false);
   const mounted = useRef(true);
   const hasStateRef = useRef(false);
@@ -174,19 +174,16 @@ export default function OnlineBattleScreen() {
     return () => clearInterval(id);
   }, [state?.weekEndsAt]);
 
-  // Rope follows left percentage (50 = center). Clamped for readability.
+  // Power share bar — fills by percentage, no win threshold / finish line.
   useEffect(() => {
     if (!state) return;
-    // Positive shift = rope pulled toward left (left leading)
-    const bias = (state.leftPercentage - 50) / 50; // -1 … +1
-    const target = Math.max(-ROPE_MAX_SHIFT, Math.min(ROPE_MAX_SHIFT, bias * ROPE_MAX_SHIFT));
-    Animated.spring(ropeAnim, {
-      toValue: target,
-      useNativeDriver: true,
-      friction: 8,
+    Animated.spring(leftFillAnim, {
+      toValue: state.leftPercentage,
+      useNativeDriver: false,
+      friction: 9,
       tension: 40,
     }).start();
-  }, [state, ropeAnim]);
+  }, [state, leftFillAnim]);
 
   const loadChallengeStatus = useCallback(async () => {
     if (!matchupId) return;
@@ -246,7 +243,7 @@ export default function OnlineBattleScreen() {
     }
 
     const status = challengeStatus.rapid_pull;
-    if (status && !status.available) {
+    if (ONLINE_COOLDOWNS_ENABLED && status && !status.available) {
       const mins = Math.ceil(status.secondsRemaining / 60);
       Alert.alert(
         t("game.challenges.rapidPull.title"),
@@ -407,19 +404,36 @@ export default function OnlineBattleScreen() {
 
         {leaderLabel ? <Text style={styles.leader}>{leaderLabel}</Text> : null}
 
-        {/* Arena / rope balance */}
-        <View style={styles.arena}>
-          <ArenaAtmosphere leftColor={leftColor} rightColor={rightColor} />
-          <View style={styles.arenaInner}>
+        {/* Weekly power share — not a finish-line rope */}
+        <View style={styles.powerCard}>
+          <Text style={styles.powerCardLabel}>{t("game.powerShare")}</Text>
+          <View style={styles.powerBarTrack}>
             <Animated.View
-              style={[styles.ropeTrack, { transform: [{ translateX: ropeAnim }] }]}
-            >
-              <View style={[styles.ropeEnd, { backgroundColor: leftColor }]} />
-              <View style={styles.ropeBar} />
-              <View style={[styles.ropeEnd, { backgroundColor: rightColor }]} />
-            </Animated.View>
-            <View style={styles.centerMark} />
+              style={[
+                styles.powerBarLeft,
+                {
+                  backgroundColor: leftColor,
+                  width: leftFillAnim.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: [0, POWER_BAR_WIDTH],
+                  }),
+                },
+              ]}
+            />
+            <View
+              style={[styles.powerBarRight, { backgroundColor: rightColor }]}
+            />
           </View>
+          <View style={styles.powerBarLabels}>
+            <Text style={[styles.powerBarPct, { color: leftColor }]}>
+              {leftPct === null ? "—" : `${leftPct.toFixed(1)}%`}
+            </Text>
+            <Text style={styles.powerBarVs}>{t("common.vs")}</Text>
+            <Text style={[styles.powerBarPct, { color: rightColor }]}>
+              {rightPct === null ? "—" : `${rightPct.toFixed(1)}%`}
+            </Text>
+          </View>
+          <Text style={styles.powerCardHint}>{t("game.powerShareHint")}</Text>
         </View>
 
         {/* Total power + countdown */}
@@ -534,16 +548,19 @@ export default function OnlineBattleScreen() {
         {ONLINE_CHALLENGES.map((challenge) => {
           const prefix = `game.challenges.${challenge.i18nKey}`;
           const live = challengeStatus[challenge.type];
-          const onCooldown = live != null && !live.available;
+          const onCooldown =
+            ONLINE_COOLDOWNS_ENABLED && live != null && !live.available;
           const cooldownLabel = onCooldown
             ? t("game.rapidPull.readyIn", {
                 time: formatCooldownClock(live.secondsRemaining),
               })
-            : challenge.cooldownSeconds === 0
-              ? t("game.cooldownNone")
-              : challenge.cooldownSeconds === 3600
-                ? t("game.cooldown60")
-                : t("game.cooldown10");
+            : !ONLINE_COOLDOWNS_ENABLED
+              ? t("game.cooldownDevOff")
+              : challenge.cooldownSeconds === 0
+                ? t("game.cooldownNone")
+                : challenge.cooldownSeconds === 3600
+                  ? t("game.cooldown60")
+                  : t("game.cooldown10");
           const rewardLabel =
             challenge.rewardTier === "high"
               ? t("game.rewardHigh")
@@ -697,46 +714,58 @@ const styles = StyleSheet.create({
     color: theme.gold,
     letterSpacing: 0.4,
   },
-  arena: {
-    height: 120,
-    borderRadius: 16,
-    overflow: "hidden",
+  powerCard: {
+    backgroundColor: theme.surface,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: theme.border,
-    backgroundColor: theme.surface,
+    padding: 14,
+    gap: 10,
   },
-  arenaInner: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
+  powerCardLabel: {
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 11,
+    color: theme.textDim,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    textAlign: "center",
   },
-  ropeTrack: {
+  powerBarTrack: {
+    height: 18,
+    borderRadius: 9,
+    overflow: "hidden",
+    flexDirection: "row",
+    backgroundColor: theme.bg,
+  },
+  powerBarLeft: {
+    height: "100%",
+    borderTopLeftRadius: 9,
+    borderBottomLeftRadius: 9,
+  },
+  powerBarRight: {
+    flex: 1,
+    height: "100%",
+  },
+  powerBarLabels: {
     flexDirection: "row",
     alignItems: "center",
-    width: WINDOW_WIDTH * 0.7,
+    justifyContent: "space-between",
   },
-  ropeBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: theme.rope,
-    borderRadius: 4,
-    shadowColor: theme.ropeSoft,
-    shadowOpacity: 0.45,
-    shadowRadius: 6,
-    elevation: 3,
+  powerBarPct: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 14,
   },
-  ropeEnd: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+  powerBarVs: {
+    fontFamily: theme.fonts.display,
+    fontSize: 12,
+    color: theme.textDim,
   },
-  centerMark: {
-    position: "absolute",
-    width: 3,
-    height: 36,
-    borderRadius: 2,
-    backgroundColor: theme.ropeSoft,
-    opacity: 0.85,
+  powerCardHint: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 12,
+    color: theme.textMuted,
+    textAlign: "center",
+    lineHeight: 17,
   },
   metaCard: {
     backgroundColor: theme.surface,

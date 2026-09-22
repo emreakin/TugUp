@@ -4,6 +4,8 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
+  Image,
   Platform,
   Pressable,
   StatusBar,
@@ -27,6 +29,12 @@ import {
 import { feedbackPull, feedbackTick, feedbackWin, preloadFeedback } from "@/lib/feedback";
 
 type Phase = "booting" | "countdown" | "playing" | "submitting" | "result" | "error";
+
+const { width: WINDOW_WIDTH } = Dimensions.get("window");
+const CHAR_SIZE = 88;
+const OPP_SIZE = 72;
+const MAX_PULL_PX = WINDOW_WIDTH * 0.28;
+const VISUAL_TAP_CAP = 120;
 
 function formatPoints(n: number, locale: string): string {
   try {
@@ -57,6 +65,8 @@ export default function RapidPullScreen() {
       : params.right || t("game.defaultRight");
   const teamColor =
     side === "left" ? params.leftColor || "#ef4444" : params.rightColor || "#3b82f6";
+  const rivalColor =
+    side === "left" ? params.rightColor || "#3b82f6" : params.leftColor || "#ef4444";
 
   const [phase, setPhase] = useState<Phase>("booting");
   const [countdown, setCountdown] = useState(3);
@@ -73,6 +83,9 @@ export default function RapidPullScreen() {
   const tapsRef = useRef(0);
   const submittedRef = useRef(false);
   const pulse = useRef(new Animated.Value(1)).current;
+  const pullProgress = useRef(new Animated.Value(0)).current;
+  const charBob = useRef(new Animated.Value(0)).current;
+  const flashOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     preloadFeedback();
@@ -102,7 +115,6 @@ export default function RapidPullScreen() {
     }
   }, [ensureSession, t]);
 
-  // Boot: start challenge session, then countdown
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -132,7 +144,6 @@ export default function RapidPullScreen() {
     };
   }, [matchupId, side, ensureSession, t]);
 
-  // 3-2-1 countdown
   useEffect(() => {
     if (phase !== "countdown") return;
     if (countdown <= 0) {
@@ -145,7 +156,6 @@ export default function RapidPullScreen() {
     return () => clearTimeout(id);
   }, [phase, countdown]);
 
-  // Play timer
   useEffect(() => {
     if (phase !== "playing") return;
     const started = Date.now();
@@ -166,11 +176,35 @@ export default function RapidPullScreen() {
     tapsRef.current += 1;
     setTaps(tapsRef.current);
     feedbackPull();
-    pulse.setValue(0.92);
+
+    const visual = Math.min(1, tapsRef.current / VISUAL_TAP_CAP);
+    Animated.spring(pullProgress, {
+      toValue: visual,
+      friction: 6,
+      tension: 80,
+      useNativeDriver: false,
+    }).start();
+
+    pulse.setValue(0.9);
     Animated.spring(pulse, {
       toValue: 1,
       friction: 4,
+      tension: 140,
+      useNativeDriver: true,
+    }).start();
+
+    charBob.setValue(-8);
+    Animated.spring(charBob, {
+      toValue: 0,
+      friction: 5,
       tension: 120,
+      useNativeDriver: true,
+    }).start();
+
+    flashOpacity.setValue(1);
+    Animated.timing(flashOpacity, {
+      toValue: 0,
+      duration: 220,
       useNativeDriver: true,
     }).start();
   };
@@ -218,12 +252,18 @@ export default function RapidPullScreen() {
     }
   };
 
-  const goBackToBattle = () => {
-    router.back();
-  };
+  const goBackToBattle = () => router.back();
 
   const secondsLeft = Math.ceil(timeLeftMs / 1000);
   const locale = i18n.language || "en";
+  const oppShift = pullProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -MAX_PULL_PX],
+  });
+  const meterWidth = pullProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom + 16 }]}>
@@ -254,24 +294,68 @@ export default function RapidPullScreen() {
 
       {phase === "countdown" ? (
         <View style={styles.centerBlock}>
-          <Text style={styles.countdownNum}>{countdown > 0 ? countdown : t("game.rapidPull.go")}</Text>
+          <Text style={styles.countdownNum}>
+            {countdown > 0 ? countdown : t("game.rapidPull.go")}
+          </Text>
           <Text style={styles.hint}>{t("game.rapidPull.countdownHint")}</Text>
         </View>
       ) : null}
 
       {phase === "playing" ? (
         <View style={styles.playBlock}>
-          <Text
-            style={[
-              styles.timer,
-              secondsLeft <= 3 && styles.timerUrgent,
-            ]}
-          >
-            {secondsLeft}
-          </Text>
-          <Text style={styles.tapCount}>
-            {t("game.rapidPull.taps", { count: taps })}
-          </Text>
+          <View style={styles.hudRow}>
+            <Text style={[styles.timer, secondsLeft <= 3 && styles.timerUrgent]}>
+              {secondsLeft}
+              <Text style={styles.timerUnit}>s</Text>
+            </Text>
+            <Text style={styles.tapCount}>
+              {t("game.rapidPull.taps", { count: taps })}
+            </Text>
+          </View>
+
+          <View style={styles.meterTrack}>
+            <Animated.View
+              style={[styles.meterFill, { width: meterWidth, backgroundColor: teamColor }]}
+            />
+          </View>
+          <Text style={styles.meterLabel}>{t("game.rapidPull.powerMeter")}</Text>
+
+          <View style={styles.arena}>
+            <Animated.View style={[styles.charSlot, { transform: [{ translateX: charBob }] }]}>
+              <Image
+                source={require("@/assets/images/character.png")}
+                style={styles.charImg}
+                resizeMode="contain"
+              />
+              <Text style={[styles.arenaTag, { color: teamColor }]} numberOfLines={1}>
+                {teamName}
+              </Text>
+            </Animated.View>
+
+            <View style={styles.ropeSlot}>
+              <Image
+                source={require("@/assets/images/rope.png")}
+                style={styles.ropeImg}
+                resizeMode="stretch"
+              />
+              <Animated.Text style={[styles.plusFlash, { opacity: flashOpacity }]}>
+                +1
+              </Animated.Text>
+            </View>
+
+            <Animated.View style={[styles.oppSlot, { transform: [{ translateX: oppShift }] }]}>
+              <View
+                style={[
+                  styles.oppBlob,
+                  { backgroundColor: `${rivalColor}55`, borderColor: rivalColor },
+                ]}
+              >
+                <AppIcon name="fitness" size={28} color={rivalColor} />
+              </View>
+              <Text style={styles.oppTag}>{t("game.rapidPull.resistance")}</Text>
+            </Animated.View>
+          </View>
+
           <Animated.View style={{ transform: [{ scale: pulse }], width: "100%" }}>
             <Pressable
               style={[styles.pullBtn, { backgroundColor: teamColor }]}
@@ -288,9 +372,7 @@ export default function RapidPullScreen() {
         <View style={styles.resultBlock}>
           <AppIcon name="flash" size={40} color={theme.gold} />
           <Text style={styles.resultTitle}>{t("game.rapidPull.resultTitle")}</Text>
-          <Text style={styles.resultPoints}>
-            +{formatPoints(totalPoints, locale)}
-          </Text>
+          <Text style={styles.resultPoints}>+{formatPoints(totalPoints, locale)}</Text>
           <Text style={styles.hint}>
             {t("game.rapidPull.resultTaps", { count: result.tapCount })}
           </Text>
@@ -335,44 +417,30 @@ export default function RapidPullScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.bg,
-    paddingHorizontal: 16,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    ...type.screenTitle,
-    flex: 1,
-  },
+  screen: { flex: 1, backgroundColor: theme.bg, paddingHorizontal: 16 },
+  header: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
+  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  headerTitle: { ...type.screenTitle, flex: 1 },
   headerSpacer: { width: 40 },
   fightingFor: {
     textAlign: "center",
     fontFamily: theme.fonts.bold,
     fontSize: 14,
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  centerBlock: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 14,
-  },
+  centerBlock: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14 },
   playBlock: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 18,
+    justifyContent: "space-between",
+    paddingBottom: 8,
+    gap: 10,
+  },
+  hudRow: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
   },
   countdownNum: {
     fontFamily: theme.fonts.display,
@@ -380,29 +448,89 @@ const styles = StyleSheet.create({
     color: theme.rope,
     letterSpacing: 2,
   },
-  timer: {
-    fontFamily: theme.fonts.display,
-    fontSize: 72,
-    color: theme.text,
+  timer: { fontFamily: theme.fonts.display, fontSize: 48, color: theme.text },
+  timerUnit: { fontSize: 22, color: theme.textMuted },
+  timerUrgent: { color: theme.danger },
+  tapCount: { fontFamily: theme.fonts.bold, fontSize: 18, color: theme.ropeSoft },
+  meterTrack: {
+    width: "100%",
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.surface,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: theme.border,
   },
-  timerUrgent: {
-    color: theme.danger,
+  meterFill: { height: "100%", borderRadius: 5 },
+  meterLabel: {
+    alignSelf: "flex-start",
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 11,
+    color: theme.textDim,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginTop: -4,
   },
-  tapCount: {
+  arena: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    minHeight: 150,
+  },
+  charSlot: { width: CHAR_SIZE + 8, alignItems: "center", zIndex: 2 },
+  charImg: { width: CHAR_SIZE, height: CHAR_SIZE },
+  arenaTag: {
+    marginTop: 4,
     fontFamily: theme.fonts.bold,
-    fontSize: 22,
-    color: theme.ropeSoft,
+    fontSize: 11,
+    maxWidth: CHAR_SIZE + 20,
+  },
+  ropeSlot: {
+    flex: 1,
+    height: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    marginHorizontal: 4,
+  },
+  ropeImg: { width: "100%", height: 18 },
+  plusFlash: {
+    position: "absolute",
+    fontFamily: theme.fonts.display,
+    fontSize: 28,
+    color: theme.gold,
+  },
+  oppSlot: { width: OPP_SIZE + 16, alignItems: "center", zIndex: 1 },
+  oppBlob: {
+    width: OPP_SIZE,
+    height: OPP_SIZE,
+    borderRadius: OPP_SIZE / 2,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  oppTag: {
+    marginTop: 4,
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 10,
+    color: theme.textMuted,
   },
   pullBtn: {
     width: "100%",
-    paddingVertical: 28,
+    paddingVertical: 22,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
   pullBtnText: {
     fontFamily: theme.fonts.display,
-    fontSize: 42,
+    fontSize: 40,
     color: theme.white,
     letterSpacing: 2,
   },
@@ -411,19 +539,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.textMuted,
     textAlign: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
   },
-  resultBlock: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  resultTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 18,
-    color: theme.text,
-  },
+  resultBlock: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  resultTitle: { fontFamily: theme.fonts.bold, fontSize: 18, color: theme.text },
   resultPoints: {
     fontFamily: theme.fonts.display,
     fontSize: 56,
@@ -446,11 +565,7 @@ const styles = StyleSheet.create({
     color: theme.white,
     textAlign: "center",
   },
-  x2DoneText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: 13,
-    color: theme.success,
-  },
+  x2DoneText: { fontFamily: theme.fonts.semiBold, fontSize: 13, color: theme.success },
   doneBtn: {
     marginTop: 16,
     backgroundColor: theme.surfaceRaised,
@@ -460,14 +575,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
-  doneBtnText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 15,
-    color: theme.text,
-  },
-  errorTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 18,
-    color: theme.text,
-  },
+  doneBtnText: { fontFamily: theme.fonts.bold, fontSize: 15, color: theme.text },
+  errorTitle: { fontFamily: theme.fonts.bold, fontSize: 18, color: theme.text },
 });
