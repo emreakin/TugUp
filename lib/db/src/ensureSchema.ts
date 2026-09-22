@@ -252,6 +252,12 @@ WHERE wr.id IN (
 
 CREATE UNIQUE INDEX IF NOT EXISTS "weekly_results_matchup_week_idx"
   ON "weekly_results" ("matchup_id", "week_start_date");
+
+CREATE TABLE IF NOT EXISTS "online_x2_claims" (
+  "nonce" text PRIMARY KEY NOT NULL,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
 `;
 
 export async function ensureSchema(): Promise<void> {

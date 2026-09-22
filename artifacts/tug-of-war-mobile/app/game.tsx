@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,13 +19,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArenaAtmosphere } from "@/components/ArenaAtmosphere";
 import { AppIcon } from "@/components/AppIcon";
 import { theme, type } from "@/constants/theme";
+import { useAuth } from "@/contexts/AuthContext";
 import {
+  fetchChallengeStatuses,
   fetchMatchupBattleState,
   type BattleSide,
+  type ChallengeStatusEntry,
   type MatchupBattleState,
 } from "@/lib/api";
 import {
-  CHALLENGE_PLACEHOLDER_NAMES,
   ONLINE_CHALLENGES,
   type OnlineChallengeType,
 } from "@/lib/onlineChallenges";
@@ -56,6 +58,16 @@ function formatCountdown(ms: number, daySuffix: string): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+function formatCooldownClock(totalSec: number): string {
+  const s = Math.max(0, Math.floor(totalSec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (v: number) => String(v).padStart(2, "0");
+  if (h > 0) return `${h}:${pad(m)}:${pad(sec)}`;
+  return `${pad(m)}:${pad(sec)}`;
+}
+
 export default function OnlineBattleScreen() {
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
@@ -78,12 +90,17 @@ export default function OnlineBattleScreen() {
   const initialSide: BattleSide | null =
     params.side === "left" || params.side === "right" ? params.side : null;
 
+  const { ensureSession } = useAuth();
   const [selectedSide, setSelectedSide] = useState<BattleSide | null>(initialSide);
   const [state, setState] = useState<MatchupBattleState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [wakingUp, setWakingUp] = useState(false);
   const [countdownMs, setCountdownMs] = useState(0);
+  const [challengeStatus, setChallengeStatus] = useState<
+    Partial<Record<OnlineChallengeType, ChallengeStatusEntry>>
+  >({});
+  const [startingRapid, setStartingRapid] = useState(false);
 
   const ropeAnim = useRef(new Animated.Value(0)).current;
   const inFlight = useRef(false);
@@ -171,12 +188,93 @@ export default function OnlineBattleScreen() {
     }).start();
   }, [state, ropeAnim]);
 
-  const onChallengePress = (type: OnlineChallengeType) => {
+  const loadChallengeStatus = useCallback(async () => {
+    if (!matchupId) return;
+    try {
+      const session = await ensureSession();
+      const res = await fetchChallengeStatuses(matchupId, session.token);
+      setChallengeStatus(res.challenges);
+    } catch {
+      // Non-fatal — cards still show static cooldown labels
+    }
+  }, [matchupId, ensureSession]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadChallengeStatus();
+      if (hasStateRef.current) {
+        loadState({ silent: true });
+      }
+    }, [loadChallengeStatus, loadState]),
+  );
+
+  // Tick live cooldown clocks on challenge cards
+  useEffect(() => {
+    const id = setInterval(() => {
+      setChallengeStatus((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const key of Object.keys(next) as OnlineChallengeType[]) {
+          const entry = next[key];
+          if (!entry || entry.secondsRemaining <= 0) continue;
+          const secondsRemaining = Math.max(0, entry.secondsRemaining - 1);
+          next[key] = {
+            ...entry,
+            secondsRemaining,
+            available: secondsRemaining === 0,
+            cooldownEndsAt: secondsRemaining === 0 ? null : entry.cooldownEndsAt,
+          };
+          changed = true;
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const onChallengePress = async (type: OnlineChallengeType) => {
     if (!selectedSide) {
       Alert.alert(t("game.pickSideTitle"), t("game.pickSideMessage"));
       return;
     }
-    Alert.alert(CHALLENGE_PLACEHOLDER_NAMES[type]);
+    if (type !== "rapid_pull") {
+      Alert.alert(
+        t(`game.challenges.${type === "heavy_pull" ? "heavyPull" : "perfectPull"}.title`),
+        t("game.challengeComingSoon"),
+      );
+      return;
+    }
+
+    const status = challengeStatus.rapid_pull;
+    if (status && !status.available) {
+      const mins = Math.ceil(status.secondsRemaining / 60);
+      Alert.alert(
+        t("game.challenges.rapidPull.title"),
+        t("game.rapidPull.onCooldown", { minutes: mins }),
+      );
+      return;
+    }
+
+    if (startingRapid) return;
+    setStartingRapid(true);
+    try {
+      await ensureSession();
+      router.push({
+        pathname: "/rapid-pull",
+        params: {
+          matchupId,
+          side: selectedSide,
+          left: leftName,
+          right: rightName,
+          leftColor,
+          rightColor,
+        },
+      });
+    } catch {
+      Alert.alert(t("common.error"), t("game.rapidPull.startFailed"));
+    } finally {
+      setStartingRapid(false);
+    }
   };
 
   const locale = i18n.language || "en";
@@ -221,6 +319,39 @@ export default function OnlineBattleScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
+      {selectedSide ? (
+        <View
+          style={[
+            styles.fightingBanner,
+            {
+              backgroundColor: `${selectedSide === "left" ? leftColor : rightColor}22`,
+              borderBottomColor: selectedSide === "left" ? leftColor : rightColor,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.fightingDot,
+              {
+                backgroundColor:
+                  selectedSide === "left" ? leftColor : rightColor,
+              },
+            ]}
+          />
+          <Text
+            style={[
+              styles.fightingBannerText,
+              { color: selectedSide === "left" ? leftColor : rightColor },
+            ]}
+            numberOfLines={1}
+          >
+            {t("game.fightingFor", {
+              team: selectedSide === "left" ? leftName : rightName,
+            })}
+          </Text>
+        </View>
+      ) : null}
+
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
@@ -230,7 +361,16 @@ export default function OnlineBattleScreen() {
       >
         {/* Teams + scores */}
         <View style={styles.teamsRow}>
-          <View style={styles.teamCol}>
+          <View
+            style={[
+              styles.teamCol,
+              selectedSide === "left" && [
+                styles.teamColSelected,
+                { borderColor: leftColor, backgroundColor: `${leftColor}18` },
+              ],
+              selectedSide === "right" && styles.teamColDimmed,
+            ]}
+          >
             <Text style={[styles.teamName, { color: leftColor }]} numberOfLines={2}>
               {leftName}
             </Text>
@@ -242,7 +382,17 @@ export default function OnlineBattleScreen() {
             </Text>
           </View>
           <Text style={styles.vs}>VS</Text>
-          <View style={[styles.teamCol, styles.teamColRight]}>
+          <View
+            style={[
+              styles.teamCol,
+              styles.teamColRight,
+              selectedSide === "right" && [
+                styles.teamColSelected,
+                { borderColor: rightColor, backgroundColor: `${rightColor}18` },
+              ],
+              selectedSide === "left" && styles.teamColDimmed,
+            ]}
+          >
             <Text style={[styles.teamName, { color: rightColor }]} numberOfLines={2}>
               {rightName}
             </Text>
@@ -318,11 +468,31 @@ export default function OnlineBattleScreen() {
             style={[
               styles.sideBtn,
               { borderColor: leftColor },
-              selectedSide === "left" && { backgroundColor: `${leftColor}33` },
+              selectedSide === "left" && [
+                styles.sideBtnSelected,
+                {
+                  backgroundColor: `${leftColor}44`,
+                  borderColor: leftColor,
+                  shadowColor: leftColor,
+                },
+              ],
+              selectedSide === "right" && styles.sideBtnUnselected,
             ]}
             onPress={() => setSelectedSide("left")}
           >
-            <Text style={[styles.sideBtnText, { color: leftColor }]} numberOfLines={1}>
+            <AppIcon
+              name="checkmark-circle"
+              size={18}
+              color={selectedSide === "left" ? leftColor : "transparent"}
+            />
+            <Text
+              style={[
+                styles.sideBtnText,
+                { color: leftColor },
+                selectedSide === "left" && styles.sideBtnTextSelected,
+              ]}
+              numberOfLines={1}
+            >
               {leftName}
             </Text>
           </Pressable>
@@ -330,21 +500,46 @@ export default function OnlineBattleScreen() {
             style={[
               styles.sideBtn,
               { borderColor: rightColor },
-              selectedSide === "right" && { backgroundColor: `${rightColor}33` },
+              selectedSide === "right" && [
+                styles.sideBtnSelected,
+                {
+                  backgroundColor: `${rightColor}44`,
+                  borderColor: rightColor,
+                  shadowColor: rightColor,
+                },
+              ],
+              selectedSide === "left" && styles.sideBtnUnselected,
             ]}
             onPress={() => setSelectedSide("right")}
           >
-            <Text style={[styles.sideBtnText, { color: rightColor }]} numberOfLines={1}>
+            <AppIcon
+              name="checkmark-circle"
+              size={18}
+              color={selectedSide === "right" ? rightColor : "transparent"}
+            />
+            <Text
+              style={[
+                styles.sideBtnText,
+                { color: rightColor },
+                selectedSide === "right" && styles.sideBtnTextSelected,
+              ]}
+              numberOfLines={1}
+            >
               {rightName}
             </Text>
           </Pressable>
         </View>
 
-        {/* Challenge cards — static definitions; placeholder click only */}
+        {/* Challenge cards */}
         {ONLINE_CHALLENGES.map((challenge) => {
           const prefix = `game.challenges.${challenge.i18nKey}`;
-          const cooldownLabel =
-            challenge.cooldownSeconds === 0
+          const live = challengeStatus[challenge.type];
+          const onCooldown = live != null && !live.available;
+          const cooldownLabel = onCooldown
+            ? t("game.rapidPull.readyIn", {
+                time: formatCooldownClock(live.secondsRemaining),
+              })
+            : challenge.cooldownSeconds === 0
               ? t("game.cooldownNone")
               : challenge.cooldownSeconds === 3600
                 ? t("game.cooldown60")
@@ -362,12 +557,18 @@ export default function OnlineBattleScreen() {
               style={({ pressed }) => [
                 styles.challengeCard,
                 pressed && styles.challengeCardPressed,
-                !selectedSide && styles.challengeCardDisabled,
+                (!selectedSide || onCooldown || startingRapid) &&
+                  styles.challengeCardDisabled,
               ]}
               onPress={() => onChallengePress(challenge.type)}
+              disabled={startingRapid}
             >
               <View style={styles.challengeIconWrap}>
-                <AppIcon name={challenge.icon} size={22} color={theme.rope} />
+                <AppIcon
+                  name={challenge.icon}
+                  size={22}
+                  color={onCooldown ? theme.textDim : theme.rope}
+                />
               </View>
               <View style={styles.challengeBody}>
                 <Text style={styles.challengeTitle}>{t(`${prefix}.title`)}</Text>
@@ -375,10 +576,21 @@ export default function OnlineBattleScreen() {
                 <View style={styles.challengeMeta}>
                   <Text style={styles.challengeMetaText}>{rewardLabel}</Text>
                   <Text style={styles.challengeDot}>·</Text>
-                  <Text style={styles.challengeMetaText}>{cooldownLabel}</Text>
+                  <Text
+                    style={[
+                      styles.challengeMetaText,
+                      onCooldown && styles.challengeMetaCooldown,
+                    ]}
+                  >
+                    {cooldownLabel}
+                  </Text>
                 </View>
               </View>
-              <AppIcon name="chevron-forward" size={18} color={theme.textDim} />
+              {onCooldown ? (
+                <AppIcon name="time-outline" size={18} color={theme.textDim} />
+              ) : (
+                <AppIcon name="chevron-forward" size={18} color={theme.textDim} />
+              )}
             </Pressable>
           );
         })}
@@ -410,19 +622,47 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   headerSpacer: { width: 40 },
+  fightingBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 2,
+  },
+  fightingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  fightingBannerText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
+    letterSpacing: 0.4,
+  },
   scroll: {
     paddingHorizontal: 16,
     gap: 14,
   },
   teamsRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "stretch",
     justifyContent: "space-between",
     marginTop: 4,
+    gap: 6,
   },
   teamCol: {
     flex: 1,
     gap: 4,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  teamColSelected: {},
+  teamColDimmed: {
+    opacity: 0.45,
   },
   teamColRight: {
     alignItems: "flex-end",
@@ -590,17 +830,31 @@ const styles = StyleSheet.create({
   },
   sideBtn: {
     flex: 1,
-    borderWidth: 1.5,
+    flexDirection: "row",
+    gap: 6,
+    borderWidth: 2.5,
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 10,
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.surface,
+  },
+  sideBtnSelected: {
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
+  },
+  sideBtnUnselected: {
+    opacity: 0.4,
+    borderColor: theme.border,
   },
   sideBtnText: {
     fontFamily: theme.fonts.bold,
     fontSize: 14,
   },
+  sideBtnTextSelected: {},
   challengeCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -654,6 +908,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.ropeSoft,
     letterSpacing: 0.3,
+  },
+  challengeMetaCooldown: {
+    color: theme.warning,
   },
   challengeDot: {
     color: theme.textDim,

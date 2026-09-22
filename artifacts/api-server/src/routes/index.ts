@@ -7,6 +7,7 @@ import gameRouter from "./game";
 import authRouter from "./auth";
 import friendsRouter from "./friends";
 import coinsRouter from "./coins";
+import onlineChallengesRouter from "./onlineChallenges";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/matchups", matchupsRouter);
 router.use("/votes", votesRouter);
 router.use("/suggestions", suggestionsRouter);
 router.use("/game", gameRouter);
+router.use("/online/challenges", onlineChallengesRouter);
 
 export default router;

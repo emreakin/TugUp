@@ -210,6 +210,94 @@ export async function fetchMatchupBattleState(
   return (await res.json()) as MatchupBattleState;
 }
 
+export type ChallengeStatusEntry = {
+  available: boolean;
+  cooldownSeconds: number;
+  cooldownEndsAt: string | null;
+  secondsRemaining: number;
+};
+
+export type ChallengeStatusesResponse = {
+  matchupId: string;
+  challenges: {
+    rapid_pull: ChallengeStatusEntry;
+    heavy_pull: ChallengeStatusEntry;
+    perfect_pull: ChallengeStatusEntry;
+  };
+};
+
+export type RapidPullStartResponse = {
+  playToken: string;
+  challengeType: "rapid_pull";
+  durationMs: number;
+  startedAt: number;
+};
+
+export type RapidPullCompleteResponse = {
+  pointsAwarded: number;
+  tapCount: number;
+  battleState: MatchupBattleState;
+  canClaimX2: boolean;
+  x2ClaimToken: string | null;
+  x2RemainingToday: number;
+  cooldownEndsAt: string;
+  challengeType: "rapid_pull";
+  side: BattleSide;
+};
+
+export type ClaimX2Response = {
+  bonusPoints: number;
+  battleState: MatchupBattleState;
+  x2RemainingToday: number;
+};
+
+export async function fetchChallengeStatuses(
+  matchupId: string,
+  token: string,
+): Promise<ChallengeStatusesResponse> {
+  return apiFetch<ChallengeStatusesResponse>(
+    `/api/online/challenges/${encodeURIComponent(matchupId)}/status`,
+    { token, method: "GET" },
+  );
+}
+
+export async function startRapidPull(
+  params: { matchupId: string; side: BattleSide },
+  token: string,
+): Promise<RapidPullStartResponse> {
+  return apiFetch<RapidPullStartResponse>("/api/online/challenges/start", {
+    token,
+    method: "POST",
+    body: JSON.stringify({
+      matchupId: params.matchupId,
+      side: params.side,
+      challengeType: "rapid_pull",
+    }),
+  });
+}
+
+export async function completeRapidPull(
+  params: { playToken: string; tapCount: number },
+  token: string,
+): Promise<RapidPullCompleteResponse> {
+  return apiFetch<RapidPullCompleteResponse>("/api/online/challenges/complete", {
+    token,
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+export async function claimOnlineX2(
+  x2ClaimToken: string,
+  token: string,
+): Promise<ClaimX2Response> {
+  return apiFetch<ClaimX2Response>("/api/online/challenges/claim-x2", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ x2ClaimToken }),
+  });
+}
+
 export type DailyClaimResult =
   | {
       claimed: true;

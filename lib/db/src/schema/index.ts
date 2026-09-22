@@ -229,6 +229,17 @@ export const onlineDailyX2UsageTable = pgTable(
 
 export type OnlineDailyX2Usage = typeof onlineDailyX2UsageTable.$inferSelect;
 
+/** One-time nonces so x2 claim tokens cannot be replayed. */
+export const onlineX2ClaimsTable = pgTable("online_x2_claims", {
+  nonce: text("nonce").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type OnlineX2Claim = typeof onlineX2ClaimsTable.$inferSelect;
+
 // Canonical friendship row — userLowId < userHighId lexicographically
 export const friendshipsTable = pgTable(
   "friendships",
