@@ -189,6 +189,54 @@ CREATE TABLE IF NOT EXISTS "coin_transactions" (
 
 CREATE INDEX IF NOT EXISTS "coin_transactions_user_idx"
   ON "coin_transactions" ("user_id", "created_at");
+
+-- ── Online weekly point battle (0003) ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "matchup_weekly_scores" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "matchup_id" text NOT NULL REFERENCES "matchups"("id") ON DELETE CASCADE,
+  "week_start_date" date NOT NULL,
+  "left_points" bigint DEFAULT 0 NOT NULL,
+  "right_points" bigint DEFAULT 0 NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "matchup_weekly_scores_unique_idx"
+  ON "matchup_weekly_scores" ("matchup_id", "week_start_date");
+
+CREATE INDEX IF NOT EXISTS "matchup_weekly_scores_week_idx"
+  ON "matchup_weekly_scores" ("week_start_date");
+
+CREATE TABLE IF NOT EXISTS "online_challenge_user_state" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "matchup_id" text NOT NULL REFERENCES "matchups"("id") ON DELETE CASCADE,
+  "challenge_type" text NOT NULL,
+  "last_played_at" timestamp with time zone,
+  "play_count" integer DEFAULT 0 NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "online_challenge_user_state_unique_idx"
+  ON "online_challenge_user_state" ("user_id", "matchup_id", "challenge_type");
+
+CREATE TABLE IF NOT EXISTS "online_daily_x2_usage" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "reward_date" date NOT NULL,
+  "count" integer DEFAULT 0 NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "online_daily_x2_usage_unique_idx"
+  ON "online_daily_x2_usage" ("user_id", "reward_date");
+
+ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "left_points" bigint DEFAULT 0 NOT NULL;
+ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "right_points" bigint DEFAULT 0 NOT NULL;
+ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "total_points" bigint DEFAULT 0 NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "weekly_results_matchup_week_idx"
+  ON "weekly_results" ("matchup_id", "week_start_date");
 `;
 
 export async function ensureSchema(): Promise<void> {

@@ -1,4 +1,15 @@
-import { pgTable, serial, text, integer, timestamp, date, boolean, uniqueIndex, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  integer,
+  bigint,
+  timestamp,
+  date,
+  boolean,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/pg-core";
 
 // Active matchup registry with cumulative win counts
 export const matchupsTable = pgTable("matchups", {
@@ -13,6 +24,7 @@ export const matchupsTable = pgTable("matchups", {
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   source: text("source").notNull().default("user"),
+  /** @deprecated Legacy Online threshold model — unused by weekly point battles. Column retained for safe migration. */
   winThreshold: integer("win_threshold").notNull().default(100),
   promotedFromSuggestionId: integer("promoted_from_suggestion_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -20,7 +32,35 @@ export const matchupsTable = pgTable("matchups", {
 
 export type Matchup = typeof matchupsTable.$inferSelect;
 
-// Weekly vote state per matchup
+/**
+ * Current (and past) weekly accumulated points per matchup.
+ * Source of truth for Online battle state. Percentages are derived, not stored.
+ *
+ * BIGINT via mode:"number": points stay within JS safe integer range for a long
+ * time; Express JSON serialization stays trivial (no native BigInt).
+ */
+export const matchupWeeklyScoresTable = pgTable(
+  "matchup_weekly_scores",
+  {
+    id: serial("id").primaryKey(),
+    matchupId: text("matchup_id")
+      .notNull()
+      .references(() => matchupsTable.id, { onDelete: "cascade" }),
+    weekStartDate: date("week_start_date").notNull(),
+    leftPoints: bigint("left_points", { mode: "number" }).notNull().default(0),
+    rightPoints: bigint("right_points", { mode: "number" }).notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("matchup_weekly_scores_unique_idx").on(t.matchupId, t.weekStartDate),
+    index("matchup_weekly_scores_week_idx").on(t.weekStartDate),
+  ],
+);
+
+export type MatchupWeeklyScore = typeof matchupWeeklyScoresTable.$inferSelect;
+
+/** @deprecated Legacy offset/vote Online model — retained; no longer drives gameplay. */
 export const matchupVotesTable = pgTable(
   "matchup_votes",
   {
@@ -131,6 +171,64 @@ export const usersTable = pgTable(
 
 export type User = typeof usersTable.$inferSelect;
 
+/**
+ * Per-user Online challenge cooldown / play-count state.
+ * userId-based (NOT IP). Placeholder clicks must NOT mutate this table.
+ *
+ * Perfect Pull future x2 eligibility uses playCount:
+ *   attempt N is x2-eligible when (playCount + 1) is odd
+ *   → attempts 1,3,5… eligible; 2,4,6… not.
+ */
+export const onlineChallengeUserStateTable = pgTable(
+  "online_challenge_user_state",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    matchupId: text("matchup_id")
+      .notNull()
+      .references(() => matchupsTable.id, { onDelete: "cascade" }),
+    /** rapid_pull | heavy_pull | perfect_pull */
+    challengeType: text("challenge_type").notNull(),
+    lastPlayedAt: timestamp("last_played_at", { withTimezone: true }),
+    playCount: integer("play_count").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("online_challenge_user_state_unique_idx").on(
+      t.userId,
+      t.matchupId,
+      t.challengeType,
+    ),
+  ],
+);
+
+export type OnlineChallengeUserState = typeof onlineChallengeUserStateTable.$inferSelect;
+
+/**
+ * Global daily x2 rewarded-ad usage across ALL Online challenges.
+ * Cap: 10 per userId per UTC calendar day (not 10 per challenge).
+ */
+export const onlineDailyX2UsageTable = pgTable(
+  "online_daily_x2_usage",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    /** UTC date YYYY-MM-DD */
+    rewardDate: date("reward_date").notNull(),
+    count: integer("count").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("online_daily_x2_usage_unique_idx").on(t.userId, t.rewardDate),
+  ],
+);
+
+export type OnlineDailyX2Usage = typeof onlineDailyX2UsageTable.$inferSelect;
+
 // Canonical friendship row — userLowId < userHighId lexicographically
 export const friendshipsTable = pgTable(
   "friendships",
@@ -171,22 +269,36 @@ export const gameInvitesTable = pgTable("game_invites", {
 export type GameInvite = typeof gameInvitesTable.$inferSelect;
 
 // ── Weekly Results Archive ─────────────────────────────────────────────────
-// Final snapshot of every matchup after the weekly voting period ends.
-export const weeklyResultsTable = pgTable("weekly_results", {
-  id: serial("id").primaryKey(),
-  matchupId: text("matchup_id").notNull(),
-  weekStartDate: date("week_start_date").notNull(),
-  leftTeam: text("left_team").notNull(),
-  rightTeam: text("right_team").notNull(),
-  leftPulls: integer("left_pulls").notNull().default(0),
-  rightPulls: integer("right_pulls").notNull().default(0),
-  totalPulls: integer("total_pulls").notNull().default(0),
-  offset: integer("offset").notNull().default(0),
-  winnerSide: text("winner_side"), // 'left' | 'right' | null
-  leftWins: integer("left_wins").notNull().default(0),
-  rightWins: integer("right_wins").notNull().default(0),
-  finalizedAt: timestamp("finalized_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// Final snapshot of every matchup after the weekly period ends.
+// Point columns are the new source of truth; pull/offset retained for legacy rows.
+export const weeklyResultsTable = pgTable(
+  "weekly_results",
+  {
+    id: serial("id").primaryKey(),
+    matchupId: text("matchup_id").notNull(),
+    weekStartDate: date("week_start_date").notNull(),
+    leftTeam: text("left_team").notNull(),
+    rightTeam: text("right_team").notNull(),
+    /** @deprecated Legacy vote pulls — zero for point-based weeks. */
+    leftPulls: integer("left_pulls").notNull().default(0),
+    /** @deprecated Legacy vote pulls — zero for point-based weeks. */
+    rightPulls: integer("right_pulls").notNull().default(0),
+    /** @deprecated Prefer totalPoints. */
+    totalPulls: integer("total_pulls").notNull().default(0),
+    /** @deprecated Legacy offset model. */
+    offset: integer("offset").notNull().default(0),
+    leftPoints: bigint("left_points", { mode: "number" }).notNull().default(0),
+    rightPoints: bigint("right_points", { mode: "number" }).notNull().default(0),
+    totalPoints: bigint("total_points", { mode: "number" }).notNull().default(0),
+    winnerSide: text("winner_side"), // 'left' | 'right' | 'draw' | null
+    leftWins: integer("left_wins").notNull().default(0),
+    rightWins: integer("right_wins").notNull().default(0),
+    finalizedAt: timestamp("finalized_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("weekly_results_matchup_week_idx").on(t.matchupId, t.weekStartDate),
+  ],
+);
 
 export type WeeklyResult = typeof weeklyResultsTable.$inferSelect;
 

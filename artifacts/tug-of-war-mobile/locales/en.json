@@ -7,7 +7,7 @@
       "oneVsOne": "1v1",
       "oneVsOneHint": "Friend or match",
       "online": "Online",
-      "onlineHint": "Vote · Who’s stronger?"
+      "onlineHint": "Weekly battles · Fight for your side"
     },
     "friends": "Friends",
     "settings": "Settings",
@@ -55,10 +55,11 @@
   },
   "online": {
     "title": "TUG OF WAR",
-    "subtitle": "Choose a Matchup",
+    "subtitle": "Choose a weekly battle",
     "wakingUp": "Waking the server up, this may take a few seconds…",
     "loadFailedTitle": "Couldn't load matchups",
     "loadFailedText": "We couldn't reach the server. Check your connection and try again.",
+    "retry": "Try Again",
     "pending": "COMING SOON",
     "suggestSection": "SUGGEST A MATCHUP",
     "submit": "SUBMIT",
@@ -70,14 +71,14 @@
       "connectionError": "Connection problem."
     },
     "onboarding": {
-      "step1Title": "Online Voting",
-      "step1Text": "This is the heart of TugUp! Pick the world's biggest rivalries (Galatasaray vs Fenerbahce, Android vs iOS...) and pull the rope for your side to boost the score.",
-      "step2Title": "How to Play",
-      "step2Text": "Choose a matchup and tap the button matching your side's color to pull the rope. Each vote shifts the rope toward that side. Don't forget—the other side is voting too!",
-      "step3Title": "Cooldown System",
-      "step3Text": "After each vote, a short cooldown starts. Watch a rewarded ad to skip the wait and vote again.",
+      "step1Title": "Weekly Team Battles",
+      "step1Text": "Pick the world's biggest rivalries and fight for your side. Points you earn in challenges add to a global weekly score.",
+      "step2Title": "Choose Your Side",
+      "step2Text": "Open a matchup, pick left or right, then take on Rapid Pull, Heavy Pull, or Perfect Pull challenges.",
+      "step3Title": "Challenges",
+      "step3Text": "Each challenge has its own rhythm—some with cooldowns, Perfect Pull with none. Watch for x2 rewards after you play.",
       "step4Title": "Weekly Reset",
-      "step4Text": "Every Monday, all scores reset. The side with the most votes that week wins and earns a cumulative victory point."
+      "step4Text": "Every Monday (UTC) the week ends. The side with more points wins. Scores reset and a new battle begins."
     }
   },
   "oneVsOne": {
@@ -282,20 +283,40 @@
     }
   },
   "game": {
-    "remaining": "LEFT",
-    "timeRemaining": "TIME LEFT",
-    "pullLeft": "PULL!",
-    "pullRight": "PULL!",
-    "adLoading": "Loading video…",
-    "watchAd": "Watch Ad ({{remaining}} left) → Pull Now",
-    "won": "Wins!",
-    "playAgain": "Play Again",
-    "menu": "Menu ←",
-    "dailyLimitTitle": "Daily Limit Reached",
-    "dailyLimitMessage": "You've used all 3 video rewards today. Try again tomorrow!",
-    "connectionError": "Connection problem.",
+    "battleTitle": "ONLINE BATTLE",
+    "totalPower": "TOTAL POWER",
+    "weekEndsIn": "Week ends in",
+    "fightForSide": "FIGHT FOR YOUR SIDE",
+    "leading": "{{team}} leading",
+    "tied": "Tied",
+    "pickSideTitle": "Pick a side",
+    "pickSideMessage": "Choose which team you're fighting for before starting a challenge.",
+    "loadingBattle": "Loading battle…",
+    "loadFailedTitle": "Couldn't load battle",
+    "loadFailedText": "We couldn't reach the server. Check your connection and try again.",
+    "rewardHigh": "High reward",
+    "rewardMedium": "Medium reward",
+    "rewardSkill": "Skill reward",
+    "cooldown60": "60 min cooldown",
+    "cooldown10": "10 min cooldown",
+    "cooldownNone": "No cooldown",
+    "challenges": {
+      "rapidPull": {
+        "title": "Rapid Pull",
+        "subtitle": "Max speed in 15 seconds"
+      },
+      "heavyPull": {
+        "title": "Heavy Pull",
+        "subtitle": "Pull against resistance"
+      },
+      "perfectPull": {
+        "title": "Perfect Pull",
+        "subtitle": "Pull at the right moment"
+      }
+    },
     "countdownDaySuffix": "D",
     "defaultLeft": "Left",
-    "defaultRight": "Right"
+    "defaultRight": "Right",
+    "menu": "Menu ←"
   }
 }

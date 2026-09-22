@@ -198,8 +198,6 @@ export default function OnlineScreen() {
         leftColor: m.leftColor,
         rightColor: m.rightColor,
         emoji: m.emoji,
-        leftWins: String(m.leftWins),
-        rightWins: String(m.rightWins),
       },
     });
   };

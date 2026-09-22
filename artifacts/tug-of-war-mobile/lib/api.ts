@@ -156,6 +156,60 @@ export const JOKER_COIN_COST = 25;
 export const REFERRAL_REWARD_NEW_USER = 250;
 export const REFERRAL_REWARD_RETURNING_USER = 100;
 
+export type BattleSide = "left" | "right";
+
+/** Current UTC-week Online battle state from GET /api/matchups/:id/state */
+export interface MatchupBattleState {
+  matchupId: string;
+  weekStartDate: string;
+  weekEndDate: string;
+  /** ISO instant — authoritative UTC week end */
+  weekEndsAt: string;
+  leftPoints: number;
+  rightPoints: number;
+  totalPoints: number;
+  leftPercentage: number;
+  rightPercentage: number;
+  leaderSide: BattleSide | null;
+  isDraw: boolean;
+}
+
+export interface PublicMatchup {
+  id: string;
+  leftTeam: string;
+  rightTeam: string;
+  leftColor: string;
+  rightColor: string;
+  emoji: string;
+  leftWins: number;
+  rightWins: number;
+  isActive: boolean;
+  sortOrder?: number;
+  source?: string;
+}
+
+/**
+ * Cold-start resilient fetch of weekly battle state.
+ * Zero scores are only returned when the server says so — callers must not
+ * invent zeros on network failure.
+ */
+export async function fetchMatchupBattleState(
+  matchupId: string,
+  options?: { onWaking?: () => void },
+): Promise<MatchupBattleState> {
+  const res = await fetchThroughColdStart(
+    `${getApiBase()}/matchups/${encodeURIComponent(matchupId)}/state`,
+    {
+      headers: getApiHeaders({}, { json: false }),
+      onWaking: options?.onWaking,
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return (await res.json()) as MatchupBattleState;
+}
+
 export type DailyClaimResult =
   | {
       claimed: true;

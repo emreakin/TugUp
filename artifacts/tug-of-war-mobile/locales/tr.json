@@ -7,7 +7,7 @@
       "oneVsOne": "1v1",
       "oneVsOneHint": "Arkadaş veya eşleşme",
       "online": "Online",
-      "onlineHint": "Oyla · Kim daha güçlü?"
+      "onlineHint": "Haftalık savaş · Tarafın için savaş"
     },
     "friends": "Arkadaşlar",
     "settings": "Ayarlar",
@@ -55,10 +55,11 @@
   },
   "online": {
     "title": "TUG OF WAR",
-    "subtitle": "Mücadele Seç",
+    "subtitle": "Haftalık mücadele seç",
     "wakingUp": "Sunucu uyanıyor, birkaç saniye sürebilir…",
     "loadFailedTitle": "Mücadeleler yüklenemedi",
     "loadFailedText": "Sunucuya ulaşamadık. Bağlantını kontrol edip tekrar dene.",
+    "retry": "Tekrar Dene",
     "pending": "BEKLEMEDEKİLER",
     "suggestSection": "MÜCADELE ÖNER",
     "submit": "TALEP ET",
@@ -70,14 +71,14 @@
       "connectionError": "Bağlantı sorunu."
     },
     "onboarding": {
-      "step1Title": "Online Oylama",
-      "step1Text": "TugUp'un kalbi burada! Dünyanın en büyük mücadelelerini (Galatasaray vs Fenerbahçe, Android vs iOS...) seç ve desteklediğin taraf için halatı çekerek skora katkı sağla.",
-      "step2Title": "Nasıl Oynanır?",
-      "step2Text": "Bir mücadele seç, ekranda beliren halatı tarafın rengiyle eşleşen butona tıklayarak çek. Her oy verdiğinde halat o tarafa doğru kayar. Rakip tarafın da oy verdiğini unutma!",
-      "step3Title": "Bekleme Sistemi",
-      "step3Text": "Her oy verişten sonra kısa bir bekleme süresi başlar. Video izleyerek (Ödüllü Reklam) bu süreyi atlayabilir ve tekrar oy verebilirsin.",
+      "step1Title": "Haftalık Takım Savaşları",
+      "step1Text": "Dünyanın en büyük rekabetlerini seç ve tarafın için savaş. Challenge'larda kazandığın puanlar küresel haftalık skora eklenir.",
+      "step2Title": "Tarafını Seç",
+      "step2Text": "Bir mücadele aç, sol veya sağ tarafı seç, ardından Hızlı Çekiş, Güç Çekişi veya Usta Çekiş challenge'larına gir.",
+      "step3Title": "Challenge'lar",
+      "step3Text": "Her challenge'ın kendi ritmi var—bazılarında bekleme süresi, Usta Çekiş'te yok. Oynadıktan sonra x2 ödülleri takip et.",
       "step4Title": "Haftalık Sıfırlama",
-      "step4Text": "Her hafta Pazartesi başlangıcında tüm skorlar sıfırlanır. Hafta boyunca en çok oy alan taraf o haftanın galibi olur ve kümülatif bir galibiyet puanı kazanır."
+      "step4Text": "Her Pazartesi (UTC) hafta biter. Daha çok puanı olan taraf kazanır. Skorlar sıfırlanır ve yeni savaş başlar."
     }
   },
   "oneVsOne": {
@@ -282,20 +283,40 @@
     }
   },
   "game": {
-    "remaining": "KALDI",
-    "timeRemaining": "KALAN SÜRE",
-    "pullLeft": "ÇEK!",
-    "pullRight": "ÇEK!",
-    "adLoading": "Video yükleniyor…",
-    "watchAd": "Video İzle ({{remaining}} kaldı) → Hemen Çek",
-    "won": "Kazandı!",
-    "playAgain": "Tekrar Oyna",
-    "menu": "Menü ←",
-    "dailyLimitTitle": "Günlük Limit Doldu",
-    "dailyLimitMessage": "Bugünkü 3 video hakkın bitti. Yarın tekrar dene!",
-    "connectionError": "Bağlantı sorunu.",
+    "battleTitle": "ONLINE SAVAŞ",
+    "totalPower": "TOPLAM GÜÇ",
+    "weekEndsIn": "Hafta bitişine",
+    "fightForSide": "TARAFIN İÇİN SAVAŞ",
+    "leading": "{{team}} önde",
+    "tied": "Berabere",
+    "pickSideTitle": "Taraf seç",
+    "pickSideMessage": "Challenge'a başlamadan önce hangi takım için savaşacağını seç.",
+    "loadingBattle": "Savaş yükleniyor…",
+    "loadFailedTitle": "Savaş yüklenemedi",
+    "loadFailedText": "Sunucuya ulaşamadık. Bağlantını kontrol edip tekrar dene.",
+    "rewardHigh": "Yüksek puan",
+    "rewardMedium": "Orta puan",
+    "rewardSkill": "Beceri puanı",
+    "cooldown60": "60 dk bekleme",
+    "cooldown10": "10 dk bekleme",
+    "cooldownNone": "Bekleme yok",
+    "challenges": {
+      "rapidPull": {
+        "title": "Hızlı Çekiş",
+        "subtitle": "15 saniyede maksimum hız"
+      },
+      "heavyPull": {
+        "title": "Güç Çekişi",
+        "subtitle": "Dirence karşı çek"
+      },
+      "perfectPull": {
+        "title": "Usta Çekiş",
+        "subtitle": "Doğru anda çek"
+      }
+    },
     "countdownDaySuffix": "G",
     "defaultLeft": "Sol",
-    "defaultRight": "Sağ"
+    "defaultRight": "Sağ",
+    "menu": "Menü ←"
   }
 }
