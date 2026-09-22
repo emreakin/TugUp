@@ -235,6 +235,21 @@ ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "left_points" bigint DEFAU
 ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "right_points" bigint DEFAULT 0 NOT NULL;
 ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "total_points" bigint DEFAULT 0 NOT NULL;
 
+-- Dedupe legacy duplicate archives before unique index (see migration 0003).
+DELETE FROM "weekly_results" wr
+WHERE wr.id IN (
+  SELECT id FROM (
+    SELECT
+      id,
+      ROW_NUMBER() OVER (
+        PARTITION BY matchup_id, week_start_date
+        ORDER BY finalized_at DESC NULLS LAST, id DESC
+      ) AS rn
+    FROM "weekly_results"
+  ) ranked
+  WHERE ranked.rn > 1
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS "weekly_results_matchup_week_idx"
   ON "weekly_results" ("matchup_id", "week_start_date");
 `;

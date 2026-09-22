@@ -64,5 +64,5 @@ ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "left_points" bigint DEFAU
 ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "right_points" bigint DEFAULT 0 NOT NULL;
 ALTER TABLE "weekly_results" ADD COLUMN IF NOT EXISTS "total_points" bigint DEFAULT 0 NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS "weekly_results_matchup_week_idx"
-  ON "weekly_results" ("matchup_id", "week_start_date");
+-- Unique index on (matchup_id, week_start_date) is created in 0004 after
+-- deduplicating legacy rows that weekly processing may have inserted twice.
