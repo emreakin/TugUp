@@ -2,7 +2,7 @@
  * Online challenge play: signed sessions, cooldown, scoring, x2 claims.
  *
  * Rapid Pull: 15s tap race. Score = tap count (~80–120 typical).
- * Heavy Pull: 20s tug vs resistance bursts. Score = final position 0–100 (~25–50 typical).
+ * Heavy Pull: 10s tug vs resistance bursts. Score = final position 0–100 (~25–50 typical).
  */
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
@@ -31,12 +31,12 @@ export const RAPID_PULL_MAX_ELAPSED_MS = 22_000;
 export const RAPID_PULL_MAX_TAPS = 270;
 
 /** Heavy Pull: slower tug with periodic snap-back resistance. */
-export const HEAVY_PULL_DURATION_MS = 20_000;
-export const HEAVY_PULL_MIN_ELAPSED_MS = 18_000;
-export const HEAVY_PULL_MAX_ELAPSED_MS = 28_000;
+export const HEAVY_PULL_DURATION_MS = 10_000;
+export const HEAVY_PULL_MIN_ELAPSED_MS = 10_000;
+export const HEAVY_PULL_MAX_ELAPSED_MS = 18_000;
 export const HEAVY_PULL_UNIT_PER_TAP = 1.8;
 export const HEAVY_PULL_MAX_POSITION = 100;
-export const HEAVY_PULL_MAX_TAPS = 350;
+export const HEAVY_PULL_MAX_TAPS = 200;
 /** Client-side feel constants (mirrored on mobile). */
 export const HEAVY_PULL_BURST_INTERVAL_MS = 2_500;
 export const HEAVY_PULL_BURST_SNAP = 8;

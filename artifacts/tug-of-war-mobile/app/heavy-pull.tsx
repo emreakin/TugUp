@@ -75,7 +75,7 @@ export default function HeavyPullScreen() {
 
   const [phase, setPhase] = useState<Phase>("booting");
   const [countdown, setCountdown] = useState(3);
-  const [timeLeftMs, setTimeLeftMs] = useState(20_000);
+  const [timeLeftMs, setTimeLeftMs] = useState(10_000);
   const [taps, setTaps] = useState(0);
   const [position, setPosition] = useState(0);
   const [result, setResult] = useState<ChallengeCompleteResponse | null>(null);
@@ -85,7 +85,7 @@ export default function HeavyPullScreen() {
   const [totalPoints, setTotalPoints] = useState(0);
 
   const playTokenRef = useRef<string | null>(null);
-  const durationMsRef = useRef(20_000);
+  const durationMsRef = useRef(10_000);
   const tapsRef = useRef(0);
   const positionRef = useRef(0);
   const submittedRef = useRef(false);
