@@ -2,8 +2,8 @@
  * Online challenge play: signed sessions, cooldown, scoring, x2 claims.
  *
  * Rapid Pull: 15s tap race. Score = tap count (~80–120 typical).
- * Heavy Pull: 10s hold-to-charge / release heaves vs constant drag.
- *   Score = peak strength 0–100 (~25–50 typical). API reuses tapCount = heaveCount.
+ * Heavy Pull: 10s vertical drag strength test — yank the rope UP against gravity.
+ *   Score = peak height 0–100. API: tapCount = upward effort units, finalPosition = peak.
  */
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
@@ -31,18 +31,16 @@ export const RAPID_PULL_MIN_ELAPSED_MS = 13_500;
 export const RAPID_PULL_MAX_ELAPSED_MS = 22_000;
 export const RAPID_PULL_MAX_TAPS = 270;
 
-/** Heavy Pull: hold-to-charge heaves against constant drag. */
+/** Heavy Pull: vertical drag strength test vs gravity. */
 export const HEAVY_PULL_DURATION_MS = 10_000;
 export const HEAVY_PULL_MIN_ELAPSED_MS = 10_000;
 export const HEAVY_PULL_MAX_ELAPSED_MS = 18_000;
 export const HEAVY_PULL_MAX_POSITION = 100;
-/** Max heaves in a round (anti-cheat). ~1 heave / 0.7s theoretical. */
-export const HEAVY_PULL_MAX_HEAVES = 14;
-/** Full-charge heave power — also cheat ceiling per heave. */
-export const HEAVY_PULL_MAX_PER_HEAVE = 32;
+/** Max upward effort units (sum of +height deltas) accepted from client. */
+export const HEAVY_PULL_MAX_EFFORT = 400;
 /** Client feel (mirrored on mobile). */
-export const HEAVY_PULL_CHARGE_MS = 1_100;
-export const HEAVY_PULL_DRAG_PER_SEC = 14;
+export const HEAVY_PULL_FALL_PER_SEC = 55;
+export const HEAVY_PULL_DRAG_RESISTANCE = 0.75;
 
 const PLAY_TOKEN_TTL_MS = 90_000;
 const X2_CLAIM_TTL_MS = 5 * 60_000;
@@ -206,15 +204,14 @@ function scoreRapidPull(tapCount: number): number {
 }
 
 /**
- * Heavy Pull score = peak strength reached.
- * tapCount is heave count (released charges). Cap by heave economics.
+ * Heavy Pull score = peak height on the strength track.
+ * tapCount = upward effort (sum of positive height deltas). Cap peak by effort.
  */
-function scoreHeavyPull(heaveCount: number, peakPosition: number): number {
-  const heaves = Math.max(0, Math.floor(heaveCount));
-  if (heaves > HEAVY_PULL_MAX_HEAVES) throw new Error("tap_count_invalid");
+function scoreHeavyPull(effortUnits: number, peakPosition: number): number {
+  const effort = Math.max(0, Math.floor(effortUnits));
+  if (effort > HEAVY_PULL_MAX_EFFORT) throw new Error("tap_count_invalid");
   const claimed = Math.max(0, Math.floor(peakPosition));
-  const maxByHeaves = heaves * HEAVY_PULL_MAX_PER_HEAVE;
-  const capped = Math.min(claimed, maxByHeaves, HEAVY_PULL_MAX_POSITION);
+  const capped = Math.min(claimed, effort, HEAVY_PULL_MAX_POSITION);
   return Math.max(0, capped);
 }
 

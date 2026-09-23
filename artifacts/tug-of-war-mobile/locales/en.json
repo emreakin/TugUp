@@ -312,7 +312,7 @@
       },
       "heavyPull": {
         "title": "Heavy Pull",
-        "subtitle": "Hold to charge, release to heave"
+        "subtitle": "Drag the rope as high as you can"
       },
       "perfectPull": {
         "title": "Perfect Pull",
@@ -344,20 +344,14 @@
     "heavyPull": {
       "preparing": "Preparing challenge…",
       "submitting": "Saving your score…",
-      "countdownHint": "Hold to charge — release to heave!",
+      "countdownHint": "Drag the handle UP the track!",
       "go": "GO!",
-      "hold": "HOLD",
-      "charging": "CHARGING…",
-      "release": "RELEASE!",
-      "heave": "HEAVE!",
-      "heaves": "{{count}} heaves",
-      "playHint": "Hold until the charge fills, then release. The weight constantly pulls back.",
-      "powerMeter": "Rope strength",
-      "chargeMeter": "Charge",
-      "peak": "Peak",
+      "instruction": "Drag UP to lift the weight",
+      "playHint": "Let go and it falls. Climb as high as you can in 10 seconds.",
+      "peak": "Best",
       "weight": "Weight",
       "resultTitle": "Points earned",
-      "resultDetail": "Peak {{position}} · {{count}} heaves",
+      "resultDetail": "Best height: {{position}}",
       "watchAdX2": "Watch ad → ×2  ({{remaining}} left today)",
       "x2Applied": "×2 applied!",
       "x2Failed": "Couldn't apply ×2. Your base score is already saved.",

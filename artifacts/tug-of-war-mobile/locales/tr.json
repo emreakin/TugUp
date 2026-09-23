@@ -312,7 +312,7 @@
       },
       "heavyPull": {
         "title": "Güç Çekişi",
-        "subtitle": "Basılı tut, bırak ve savur"
+        "subtitle": "İpi olabildiğince yukarı çek"
       },
       "perfectPull": {
         "title": "Usta Çekiş",
@@ -344,20 +344,14 @@
     "heavyPull": {
       "preparing": "Challenge hazırlanıyor…",
       "submitting": "Skorun kaydediliyor…",
-      "countdownHint": "Basılı tutarak şarj et — bırakınca savur!",
+      "countdownHint": "Tutamacı YUKARI kaydır!",
       "go": "BAŞLA!",
-      "hold": "BASILI TUT",
-      "charging": "ŞARJ…",
-      "release": "BIRAK!",
-      "heave": "SAVUR!",
-      "heaves": "{{count}} savuruş",
-      "playHint": "Şarj dolana kadar basılı tut, sonra bırak. Ağırlık sürekli geri çeker.",
-      "powerMeter": "İp gücü",
-      "chargeMeter": "Şarj",
-      "peak": "Zirve",
+      "instruction": "Ağırlığı kaldırmak için YUKARI çek",
+      "playHint": "Bırakırsan düşer. 10 saniyede olabildiğince yükseğe çık.",
+      "peak": "En iyi",
       "weight": "Ağırlık",
       "resultTitle": "Kazanılan puan",
-      "resultDetail": "Zirve {{position}} · {{count}} savuruş",
+      "resultDetail": "En iyi yükseklik: {{position}}",
       "watchAdX2": "Reklam izle → ×2  (bugün {{remaining}} hak)",
       "x2Applied": "×2 uygulandı!",
       "x2Failed": "×2 uygulanamadı. Temel skorun zaten kaydedildi.",
