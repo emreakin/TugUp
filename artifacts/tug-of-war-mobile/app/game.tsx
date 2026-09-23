@@ -100,7 +100,7 @@ export default function OnlineBattleScreen() {
   const [challengeStatus, setChallengeStatus] = useState<
     Partial<Record<OnlineChallengeType, ChallengeStatusEntry>>
   >({});
-  const [startingRapid, setStartingRapid] = useState(false);
+  const [startingChallenge, setStartingChallenge] = useState(false);
 
   const leftFillAnim = useRef(new Animated.Value(50)).current;
   const inFlight = useRef(false);
@@ -234,30 +234,34 @@ export default function OnlineBattleScreen() {
       Alert.alert(t("game.pickSideTitle"), t("game.pickSideMessage"));
       return;
     }
-    if (type !== "rapid_pull") {
+    if (type === "perfect_pull") {
       Alert.alert(
-        t(`game.challenges.${type === "heavy_pull" ? "heavyPull" : "perfectPull"}.title`),
+        t("game.challenges.perfectPull.title"),
         t("game.challengeComingSoon"),
       );
       return;
     }
 
-    const status = challengeStatus.rapid_pull;
+    const status = challengeStatus[type];
+    const titleKey =
+      type === "heavy_pull" ? "game.challenges.heavyPull.title" : "game.challenges.rapidPull.title";
+    const cooldownKey =
+      type === "heavy_pull" ? "game.heavyPull.onCooldown" : "game.rapidPull.onCooldown";
+    const startFailKey =
+      type === "heavy_pull" ? "game.heavyPull.startFailed" : "game.rapidPull.startFailed";
+
     if (ONLINE_COOLDOWNS_ENABLED && status && !status.available) {
       const mins = Math.ceil(status.secondsRemaining / 60);
-      Alert.alert(
-        t("game.challenges.rapidPull.title"),
-        t("game.rapidPull.onCooldown", { minutes: mins }),
-      );
+      Alert.alert(t(titleKey), t(cooldownKey, { minutes: mins }));
       return;
     }
 
-    if (startingRapid) return;
-    setStartingRapid(true);
+    if (startingChallenge) return;
+    setStartingChallenge(true);
     try {
       await ensureSession();
       router.push({
-        pathname: "/rapid-pull",
+        pathname: type === "heavy_pull" ? "/heavy-pull" : "/rapid-pull",
         params: {
           matchupId,
           side: selectedSide,
@@ -268,9 +272,9 @@ export default function OnlineBattleScreen() {
         },
       });
     } catch {
-      Alert.alert(t("common.error"), t("game.rapidPull.startFailed"));
+      Alert.alert(t("common.error"), t(startFailKey));
     } finally {
-      setStartingRapid(false);
+      setStartingChallenge(false);
     }
   };
 
@@ -574,11 +578,11 @@ export default function OnlineBattleScreen() {
               style={({ pressed }) => [
                 styles.challengeCard,
                 pressed && styles.challengeCardPressed,
-                (!selectedSide || onCooldown || startingRapid) &&
-                  styles.challengeCardDisabled,
+                (!selectedSide || onCooldown || startingChallenge) &&
+                styles.challengeCardDisabled,
               ]}
               onPress={() => onChallengePress(challenge.type)}
-              disabled={startingRapid}
+              disabled={startingChallenge}
             >
               <View style={styles.challengeIconWrap}>
                 <AppIcon

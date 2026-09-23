@@ -1,9 +1,8 @@
 /**
- * Online challenge play: signed sessions, cooldown, Rapid Pull scoring, x2 claims.
+ * Online challenge play: signed sessions, cooldown, scoring, x2 claims.
  *
- * Rapid Pull: 15s tap race. Score = tap count (target average ~80–120 for
- * typical humans). Server validates duration + tap-rate caps — client cannot
- * submit arbitrary points.
+ * Rapid Pull: 15s tap race. Score = tap count (~80–120 typical).
+ * Heavy Pull: 20s tug vs resistance bursts. Score = final position 0–100 (~25–50 typical).
  */
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
@@ -27,13 +26,37 @@ import { awardChallengePoints, type BattleSide, type MatchupBattleState } from "
 import { utcToday } from "./week";
 
 export const RAPID_PULL_DURATION_MS = 15_000;
-/** Allow slight clock/network skew after the 15s run. */
 export const RAPID_PULL_MIN_ELAPSED_MS = 13_500;
 export const RAPID_PULL_MAX_ELAPSED_MS = 22_000;
-/** ~18 taps/sec hard cap for 15s — above human spam, below bot absurdity. */
 export const RAPID_PULL_MAX_TAPS = 270;
-const PLAY_TOKEN_TTL_MS = 60_000;
+
+/** Heavy Pull: slower tug with periodic snap-back resistance. */
+export const HEAVY_PULL_DURATION_MS = 20_000;
+export const HEAVY_PULL_MIN_ELAPSED_MS = 18_000;
+export const HEAVY_PULL_MAX_ELAPSED_MS = 28_000;
+export const HEAVY_PULL_UNIT_PER_TAP = 1.8;
+export const HEAVY_PULL_MAX_POSITION = 100;
+export const HEAVY_PULL_MAX_TAPS = 350;
+/** Client-side feel constants (mirrored on mobile). */
+export const HEAVY_PULL_BURST_INTERVAL_MS = 2_500;
+export const HEAVY_PULL_BURST_SNAP = 8;
+
+const PLAY_TOKEN_TTL_MS = 90_000;
 const X2_CLAIM_TTL_MS = 5 * 60_000;
+
+const IMPLEMENTED: OnlineChallengeType[] = ["rapid_pull", "heavy_pull"];
+
+function durationFor(type: OnlineChallengeType): number {
+  if (type === "heavy_pull") return HEAVY_PULL_DURATION_MS;
+  return RAPID_PULL_DURATION_MS;
+}
+
+function elapsedBounds(type: OnlineChallengeType): { min: number; max: number } {
+  if (type === "heavy_pull") {
+    return { min: HEAVY_PULL_MIN_ELAPSED_MS, max: HEAVY_PULL_MAX_ELAPSED_MS };
+  }
+  return { min: RAPID_PULL_MIN_ELAPSED_MS, max: RAPID_PULL_MAX_ELAPSED_MS };
+}
 
 function getSecret(): string {
   return process.env.JWT_SECRET ?? "tugup-dev-secret-change-in-production";
@@ -140,7 +163,7 @@ export async function startChallenge(params: {
   durationMs: number;
   startedAt: number;
 }> {
-  if (params.challengeType !== "rapid_pull") {
+  if (!IMPLEMENTED.includes(params.challengeType)) {
     throw new Error("challenge_not_implemented");
   }
 
@@ -169,7 +192,7 @@ export async function startChallenge(params: {
   return {
     playToken,
     challengeType: params.challengeType,
-    durationMs: RAPID_PULL_DURATION_MS,
+    durationMs: durationFor(params.challengeType),
     startedAt,
   };
 }
@@ -177,6 +200,20 @@ export async function startChallenge(params: {
 function scoreRapidPull(tapCount: number): number {
   const taps = Math.max(0, Math.floor(tapCount));
   return Math.min(taps, RAPID_PULL_MAX_TAPS);
+}
+
+/**
+ * Heavy Pull score = final pull position, capped by tap economics so clients
+ * cannot invent progress without taps. Resistance is client feel; cheat ceiling
+ * is still tapCount * UNIT.
+ */
+function scoreHeavyPull(tapCount: number, finalPosition: number): number {
+  const taps = Math.max(0, Math.floor(tapCount));
+  if (taps > HEAVY_PULL_MAX_TAPS) throw new Error("tap_count_invalid");
+  const claimed = Math.max(0, Math.floor(finalPosition));
+  const maxByTaps = Math.floor(taps * HEAVY_PULL_UNIT_PER_TAP + 0.0001);
+  const capped = Math.min(claimed, maxByTaps, HEAVY_PULL_MAX_POSITION);
+  return Math.max(0, capped);
 }
 
 async function bumpChallengeUserState(
@@ -268,9 +305,12 @@ export async function completeChallenge(params: {
   userId: string;
   playToken: string;
   tapCount: number;
+  /** Heavy Pull final position 0–100. Ignored for Rapid Pull. */
+  finalPosition?: number;
 }): Promise<{
   pointsAwarded: number;
   tapCount: number;
+  finalPosition: number | null;
   battleState: MatchupBattleState;
   canClaimX2: boolean;
   x2ClaimToken: string | null;
@@ -285,7 +325,7 @@ export async function completeChallenge(params: {
   }
 
   const challengeType = String(payload.challengeType ?? "");
-  if (!isOnlineChallengeType(challengeType) || challengeType !== "rapid_pull") {
+  if (!isOnlineChallengeType(challengeType) || !IMPLEMENTED.includes(challengeType)) {
     throw new Error("invalid_play_token");
   }
 
@@ -296,26 +336,31 @@ export async function completeChallenge(params: {
     throw new Error("invalid_play_token");
   }
 
-  if (Date.now() - startedAt > PLAY_TOKEN_TTL_MS + RAPID_PULL_MAX_ELAPSED_MS) {
+  const bounds = elapsedBounds(challengeType);
+  if (Date.now() - startedAt > PLAY_TOKEN_TTL_MS + bounds.max) {
     throw new Error("play_token_expired");
   }
 
   const elapsed = Date.now() - startedAt;
-  if (elapsed < RAPID_PULL_MIN_ELAPSED_MS) {
-    throw new Error("challenge_too_fast");
-  }
-  if (elapsed > RAPID_PULL_MAX_ELAPSED_MS) {
-    throw new Error("challenge_too_slow");
-  }
+  if (elapsed < bounds.min) throw new Error("challenge_too_fast");
+  if (elapsed > bounds.max) throw new Error("challenge_too_slow");
 
   await assertCooldownClear(params.userId, matchupId, challengeType);
 
   const tapCount = Math.max(0, Math.floor(Number(params.tapCount) || 0));
-  if (tapCount > RAPID_PULL_MAX_TAPS) {
-    throw new Error("tap_count_invalid");
+  let pointsAwarded = 0;
+  let finalPosition: number | null = null;
+
+  if (challengeType === "rapid_pull") {
+    if (tapCount > RAPID_PULL_MAX_TAPS) throw new Error("tap_count_invalid");
+    pointsAwarded = scoreRapidPull(tapCount);
+  } else if (challengeType === "heavy_pull") {
+    const pos = Number(params.finalPosition);
+    if (!Number.isFinite(pos)) throw new Error("position_invalid");
+    pointsAwarded = scoreHeavyPull(tapCount, pos);
+    finalPosition = pointsAwarded;
   }
 
-  const pointsAwarded = scoreRapidPull(tapCount);
   const battleState = await awardChallengePoints({
     matchupId,
     side,
@@ -352,6 +397,7 @@ export async function completeChallenge(params: {
   return {
     pointsAwarded,
     tapCount,
+    finalPosition,
     battleState,
     canClaimX2,
     x2ClaimToken,
@@ -404,7 +450,6 @@ export async function claimChallengeX2(params: {
     throw new Error("x2_already_claimed");
   }
 
-  // Mark usage first to reduce double-claim races, then award.
   const newCount = await incrementDailyX2(params.userId);
   if (newCount > ONLINE_DAILY_X2_MAX) {
     throw new Error("x2_daily_limit");

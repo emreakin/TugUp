@@ -226,23 +226,34 @@ export type ChallengeStatusesResponse = {
   };
 };
 
-export type RapidPullStartResponse = {
+export type ChallengeStartResponse = {
   playToken: string;
-  challengeType: "rapid_pull";
+  challengeType: "rapid_pull" | "heavy_pull";
   durationMs: number;
   startedAt: number;
 };
 
-export type RapidPullCompleteResponse = {
+export type ChallengeCompleteResponse = {
   pointsAwarded: number;
   tapCount: number;
+  finalPosition: number | null;
   battleState: MatchupBattleState;
   canClaimX2: boolean;
   x2ClaimToken: string | null;
   x2RemainingToday: number;
   cooldownEndsAt: string;
-  challengeType: "rapid_pull";
+  challengeType: "rapid_pull" | "heavy_pull";
   side: BattleSide;
+};
+
+/** @deprecated Prefer ChallengeStartResponse */
+export type RapidPullStartResponse = ChallengeStartResponse & {
+  challengeType: "rapid_pull";
+};
+
+/** @deprecated Prefer ChallengeCompleteResponse */
+export type RapidPullCompleteResponse = ChallengeCompleteResponse & {
+  challengeType: "rapid_pull";
 };
 
 export type ClaimX2Response = {
@@ -261,30 +272,65 @@ export async function fetchChallengeStatuses(
   );
 }
 
+export async function startOnlineChallenge(
+  params: {
+    matchupId: string;
+    side: BattleSide;
+    challengeType: "rapid_pull" | "heavy_pull";
+  },
+  token: string,
+): Promise<ChallengeStartResponse> {
+  return apiFetch<ChallengeStartResponse>("/api/online/challenges/start", {
+    token,
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+export async function completeOnlineChallenge(
+  params: {
+    playToken: string;
+    tapCount: number;
+    finalPosition?: number;
+  },
+  token: string,
+): Promise<ChallengeCompleteResponse> {
+  return apiFetch<ChallengeCompleteResponse>("/api/online/challenges/complete", {
+    token,
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
 export async function startRapidPull(
   params: { matchupId: string; side: BattleSide },
   token: string,
 ): Promise<RapidPullStartResponse> {
-  return apiFetch<RapidPullStartResponse>("/api/online/challenges/start", {
+  return startOnlineChallenge(
+    { ...params, challengeType: "rapid_pull" },
     token,
-    method: "POST",
-    body: JSON.stringify({
-      matchupId: params.matchupId,
-      side: params.side,
-      challengeType: "rapid_pull",
-    }),
-  });
+  ) as Promise<RapidPullStartResponse>;
 }
 
 export async function completeRapidPull(
   params: { playToken: string; tapCount: number },
   token: string,
 ): Promise<RapidPullCompleteResponse> {
-  return apiFetch<RapidPullCompleteResponse>("/api/online/challenges/complete", {
-    token,
-    method: "POST",
-    body: JSON.stringify(params),
-  });
+  return completeOnlineChallenge(params, token) as Promise<RapidPullCompleteResponse>;
+}
+
+export async function startHeavyPull(
+  params: { matchupId: string; side: BattleSide },
+  token: string,
+): Promise<ChallengeStartResponse> {
+  return startOnlineChallenge({ ...params, challengeType: "heavy_pull" }, token);
+}
+
+export async function completeHeavyPull(
+  params: { playToken: string; tapCount: number; finalPosition: number },
+  token: string,
+): Promise<ChallengeCompleteResponse> {
+  return completeOnlineChallenge(params, token);
 }
 
 export async function claimOnlineX2(

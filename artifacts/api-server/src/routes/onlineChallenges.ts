@@ -37,6 +37,7 @@ function mapError(req: AuthedRequest, err: unknown): { status: number; body: Rec
     case "challenge_too_fast":
     case "challenge_too_slow":
     case "tap_count_invalid":
+    case "position_invalid":
     case "invalid_x2_token":
     case "x2_token_expired":
       return { status: 400, body: { error: reqT(req, "invalidRequest"), code } };
@@ -93,6 +94,10 @@ router.post("/start", requireAuth, async (req: AuthedRequest, res) => {
 router.post("/complete", requireAuth, async (req: AuthedRequest, res) => {
   const playToken = String(req.body?.playToken ?? "");
   const tapCount = Number(req.body?.tapCount);
+  const finalPosition =
+    req.body?.finalPosition === undefined || req.body?.finalPosition === null
+      ? undefined
+      : Number(req.body.finalPosition);
   if (!req.userId || !playToken || !Number.isFinite(tapCount)) {
     res.status(400).json({ error: reqT(req, "invalidRequest") });
     return;
@@ -102,6 +107,7 @@ router.post("/complete", requireAuth, async (req: AuthedRequest, res) => {
       userId: req.userId,
       playToken,
       tapCount,
+      finalPosition,
     });
     res.json(result);
   } catch (err) {
