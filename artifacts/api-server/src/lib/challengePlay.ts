@@ -37,10 +37,11 @@ export const HEAVY_PULL_MIN_ELAPSED_MS = 10_000;
 export const HEAVY_PULL_MAX_ELAPSED_MS = 18_000;
 export const HEAVY_PULL_MAX_POSITION = 100;
 /** Max upward effort units (sum of +height deltas) accepted from client. */
-export const HEAVY_PULL_MAX_EFFORT = 400;
-/** Client feel (mirrored on mobile). */
-export const HEAVY_PULL_FALL_PER_SEC = 55;
-export const HEAVY_PULL_DRAG_RESISTANCE = 0.75;
+export const HEAVY_PULL_MAX_EFFORT = 500;
+/** Client feel (mirrored on mobile) — hard near the top; falls even while gripping. */
+export const HEAVY_PULL_FALL_PER_SEC = 80;
+export const HEAVY_PULL_FALL_WHILE_GRIP = 36;
+export const HEAVY_PULL_DRAG_RESISTANCE = 0.32;
 
 const PLAY_TOKEN_TTL_MS = 90_000;
 const X2_CLAIM_TTL_MS = 5 * 60_000;

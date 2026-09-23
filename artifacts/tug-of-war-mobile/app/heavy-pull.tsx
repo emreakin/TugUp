@@ -31,10 +31,14 @@ type Phase = "booting" | "countdown" | "playing" | "submitting" | "result" | "er
 
 /** Keep in sync with api-server challengePlay Heavy Pull constants. */
 const MAX_POSITION = 100;
-const FALL_PER_SEC = 55;
-const DRAG_RESISTANCE = 0.75;
+const FALL_PER_SEC = 80;
+const FALL_WHILE_GRIP = 36;
+const DRAG_RESISTANCE = 0.32;
 const TICK_MS = 32;
 const MARKS = [25, 50, 75, 100];
+/** Top band reserved for the lifter avatar (not part of lift range). */
+const LIFTER_BAND = 0.22;
+const WEIGHT_SIZE = 72;
 
 function formatPoints(n: number, locale: string): string {
   try {
@@ -42,6 +46,12 @@ function formatPoints(n: number, locale: string): string {
   } catch {
     return String(n);
   }
+}
+
+/** Higher = harder. Near the top, each yank barely moves the weight. */
+function heightResistance(h: number): number {
+  const t = Math.max(0, Math.min(1, h / MAX_POSITION));
+  return Math.max(0.1, 1 - Math.pow(t, 1.15) * 0.88);
 }
 
 export default function HeavyPullScreen() {
@@ -85,8 +95,7 @@ export default function HeavyPullScreen() {
   const peakRef = useRef(0);
   const effortRef = useRef(0);
   const draggingRef = useRef(false);
-  const grabStartYRef = useRef(0);
-  const grabStartHeightRef = useRef(0);
+  const lastPageYRef = useRef(0);
   const submittedRef = useRef(false);
   const lastTickRef = useRef(0);
   const lastFeedbackPeakRef = useRef(0);
@@ -168,7 +177,7 @@ export default function HeavyPullScreen() {
     return () => clearTimeout(id);
   }, [phase, countdown]);
 
-  /** Gravity + timer. While dragging, height is driven by touch. */
+  /** Gravity always applies — gripping only slows the fall. */
   useEffect(() => {
     if (phase !== "playing") return;
     const started = Date.now();
@@ -188,8 +197,9 @@ export default function HeavyPullScreen() {
         return;
       }
 
-      if (!draggingRef.current && heightRef.current > 0) {
-        const next = Math.max(0, heightRef.current - FALL_PER_SEC * dt);
+      if (heightRef.current > 0) {
+        const fallRate = draggingRef.current ? FALL_WHILE_GRIP : FALL_PER_SEC;
+        const next = Math.max(0, heightRef.current - fallRate * dt);
         heightRef.current = next;
         setHeight(Math.floor(next));
       }
@@ -210,7 +220,7 @@ export default function HeavyPullScreen() {
     if (clamped > peakRef.current) {
       peakRef.current = clamped;
       setPeak(Math.floor(clamped));
-      if (clamped - lastFeedbackPeakRef.current >= 8) {
+      if (clamped - lastFeedbackPeakRef.current >= 6) {
         lastFeedbackPeakRef.current = clamped;
         feedbackPull();
       }
@@ -225,15 +235,19 @@ export default function HeavyPullScreen() {
     if (phase !== "playing" || submittedRef.current) return;
     draggingRef.current = true;
     setDragging(true);
-    grabStartYRef.current = pageY;
-    grabStartHeightRef.current = heightRef.current;
+    lastPageYRef.current = pageY;
   };
 
   const onGrabMove = (pageY: number) => {
     if (!draggingRef.current || phase !== "playing" || trackH <= 0) return;
-    const dy = grabStartYRef.current - pageY; // finger up → positive
-    const deltaPct = (dy / trackH) * 100 * DRAG_RESISTANCE;
-    applyHeight(grabStartHeightRef.current + deltaPct);
+    const dy = lastPageYRef.current - pageY; // finger up → positive
+    lastPageYRef.current = pageY;
+    if (dy <= 0) return;
+
+    const liftSpan = trackH * (1 - LIFTER_BAND);
+    const rawGain = (dy / liftSpan) * 100 * DRAG_RESISTANCE;
+    const gain = rawGain * heightResistance(heightRef.current);
+    applyHeight(heightRef.current + gain);
   };
 
   const onGrabEnd = () => {
@@ -288,8 +302,10 @@ export default function HeavyPullScreen() {
   const goBackToBattle = () => router.back();
   const secondsLeft = Math.ceil(timeLeftMs / 1000);
   const locale = i18n.language || "en";
-  const handleBottomPct = height; // 0 at bottom, 100 at top
-  const peakBottomPct = peak;
+
+  /** Weight travels in the lower (1 - LIFTER_BAND) of the track. */
+  const weightBottomPct = height * (1 - LIFTER_BAND);
+  const peakBottomPct = peak * (1 - LIFTER_BAND);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom + 12 }]}>
@@ -320,11 +336,15 @@ export default function HeavyPullScreen() {
 
       {phase === "countdown" ? (
         <View style={styles.centerBlock}>
+          <Image
+            source={require("@/assets/images/character_heavy_pull.png")}
+            style={styles.countdownChar}
+            resizeMode="contain"
+          />
           <Text style={styles.countdownNum}>
             {countdown > 0 ? countdown : t("game.heavyPull.go")}
           </Text>
           <Text style={styles.hint}>{t("game.heavyPull.countdownHint")}</Text>
-          <AppIcon name="arrow-up" size={48} color={theme.rope} />
         </View>
       ) : null}
 
@@ -356,56 +376,62 @@ export default function HeavyPullScreen() {
             onResponderRelease={onGrabEnd}
             onResponderTerminate={onGrabEnd}
           >
-            {/* Shaft */}
-            <View style={styles.shaft} />
+            {/* Lifter fixed at top — pulls rope from below */}
+            <View style={styles.lifterSlot}>
+              <Image
+                source={require("@/assets/images/character_heavy_pull.png")}
+                style={styles.lifterImg}
+                resizeMode="contain"
+              />
+            </View>
 
-            {/* Peak ghost line */}
+            {/* Peak ghost */}
             {peak > 0 ? (
               <View style={[styles.peakLine, { bottom: `${peakBottomPct}%` }]} />
             ) : null}
 
-            {/* Tick lines + labels */}
             {MARKS.map((m) => (
-              <View key={`t-${m}`} style={[styles.tickRow, { bottom: `${m}%` }]}>
+              <View
+                key={`t-${m}`}
+                style={[styles.tickRow, { bottom: `${m * (1 - LIFTER_BAND)}%` }]}
+              >
                 <Text style={styles.markLabel}>{m}</Text>
                 <View style={styles.tick} />
               </View>
             ))}
 
-            {/* Rope from bottom to handle */}
+            {/* Vertical rope: from under lifter down to the weight */}
             <View
               style={[
-                styles.ropeFill,
+                styles.ropeLine,
                 {
-                  height: `${Math.max(4, handleBottomPct)}%`,
-                  backgroundColor: teamColor,
+                  bottom: `${weightBottomPct}%`,
+                  top: `${LIFTER_BAND * 100 - 2}%`,
+                  backgroundColor: theme.rope,
                 },
               ]}
             />
 
-            {/* Weight / handle */}
+            {/* Rising weight */}
             <View
               style={[
-                styles.handle,
+                styles.weight,
                 {
-                  bottom: `${handleBottomPct}%`,
+                  bottom: `${weightBottomPct}%`,
                   borderColor: dragging ? theme.gold : teamColor,
-                  backgroundColor: dragging ? theme.ember : theme.surfaceRaised,
-                  transform: [{ translateY: 22 }],
+                  transform: [{ translateY: WEIGHT_SIZE / 2 }],
                 },
               ]}
             >
               <Image
-                source={require("@/assets/images/character.png")}
-                style={styles.handleChar}
+                source={require("@/assets/images/bowling-ball.png")}
+                style={styles.weightImg}
                 resizeMode="contain"
               />
-              <Text style={styles.handleVal}>{Math.floor(height)}</Text>
+              <Text style={styles.weightVal}>{Math.floor(height)}</Text>
             </View>
 
-            {/* Floor weight */}
-            <View style={styles.floorBlock}>
-              <AppIcon name="fitness" size={20} color={theme.textMuted} />
+            <View style={styles.floorHint}>
               <Text style={styles.floorText}>{t("game.heavyPull.weight")}</Text>
             </View>
           </View>
@@ -416,7 +442,11 @@ export default function HeavyPullScreen() {
 
       {phase === "result" && result ? (
         <View style={styles.resultBlock}>
-          <AppIcon name="fitness" size={40} color={theme.gold} />
+          <Image
+            source={require("@/assets/images/character_heavy_pull.png")}
+            style={styles.resultChar}
+            resizeMode="contain"
+          />
           <Text style={styles.resultTitle}>{t("game.heavyPull.resultTitle")}</Text>
           <Text style={styles.resultPoints}>+{formatPoints(totalPoints, locale)}</Text>
           <Text style={styles.hint}>
@@ -476,7 +506,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 4,
   },
-  centerBlock: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14 },
+  centerBlock: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  countdownChar: { width: 140, height: 160, marginBottom: 4 },
   playBlock: { flex: 1, gap: 8, paddingBottom: 4 },
   hudRow: {
     flexDirection: "row",
@@ -486,7 +517,7 @@ const styles = StyleSheet.create({
   hudRight: { alignItems: "flex-end" },
   countdownNum: {
     fontFamily: theme.fonts.display,
-    fontSize: 96,
+    fontSize: 72,
     color: theme.rope,
     letterSpacing: 2,
   },
@@ -504,16 +535,14 @@ const styles = StyleSheet.create({
   instruction: {
     textAlign: "center",
     fontFamily: theme.fonts.bold,
-    fontSize: 18,
+    fontSize: 17,
     color: theme.text,
-    marginBottom: 2,
   },
   instructionArrow: {
     fontFamily: theme.fonts.display,
-    fontSize: 22,
+    fontSize: 20,
     color: theme.gold,
   },
-  trackRow: { flex: 1, minHeight: 280 },
   track: {
     flex: 1,
     borderRadius: 20,
@@ -523,17 +552,19 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     overflow: "hidden",
     position: "relative",
+    minHeight: 280,
   },
-  shaft: {
+  lifterSlot: {
     position: "absolute",
-    left: "50%",
-    marginLeft: -6,
-    top: 24,
-    bottom: 48,
-    width: 12,
-    borderRadius: 6,
-    backgroundColor: theme.border,
+    top: 4,
+    left: 0,
+    right: 0,
+    height: "22%",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    zIndex: 6,
   },
+  lifterImg: { width: 110, height: "100%" },
   tickRow: {
     position: "absolute",
     left: 10,
@@ -541,6 +572,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    zIndex: 1,
   },
   markLabel: {
     fontFamily: theme.fonts.semiBold,
@@ -559,44 +591,46 @@ const styles = StyleSheet.create({
     right: 12,
     height: 2,
     backgroundColor: theme.gold,
-    opacity: 0.7,
+    opacity: 0.75,
+    zIndex: 2,
   },
-  ropeFill: {
+  ropeLine: {
     position: "absolute",
     left: "50%",
-    marginLeft: -4,
-    bottom: 48,
-    width: 8,
-    borderRadius: 4,
-    opacity: 0.85,
+    marginLeft: -3,
+    width: 6,
+    borderRadius: 3,
+    zIndex: 3,
+    opacity: 0.95,
   },
-  handle: {
+  weight: {
     position: "absolute",
     alignSelf: "center",
     left: "50%",
-    marginLeft: -44,
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    marginLeft: -WEIGHT_SIZE / 2,
+    width: WEIGHT_SIZE,
+    height: WEIGHT_SIZE,
+    borderRadius: WEIGHT_SIZE / 2,
     borderWidth: 3,
+    backgroundColor: theme.surfaceRaised,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 5,
   },
-  handleChar: { width: 48, height: 48 },
-  handleVal: {
+  weightImg: { width: 44, height: 44 },
+  weightVal: {
+    position: "absolute",
+    bottom: -2,
     fontFamily: theme.fonts.bold,
-    fontSize: 12,
-    color: theme.text,
-    marginTop: -2,
+    fontSize: 11,
+    color: theme.gold,
   },
-  floorBlock: {
+  floorHint: {
     position: "absolute",
     bottom: 8,
     left: 0,
     right: 0,
     alignItems: "center",
-    gap: 2,
   },
   floorText: {
     fontFamily: theme.fonts.semiBold,
@@ -612,7 +646,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 8,
   },
-  resultBlock: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  resultBlock: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
+  resultChar: { width: 120, height: 140 },
   resultTitle: { fontFamily: theme.fonts.bold, fontSize: 18, color: theme.text },
   resultPoints: {
     fontFamily: theme.fonts.display,
