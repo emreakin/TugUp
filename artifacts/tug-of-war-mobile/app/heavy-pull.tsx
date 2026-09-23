@@ -36,10 +36,12 @@ const OPP_SIZE = 72;
 const MAX_PULL_PX = WINDOW_WIDTH * 0.28;
 
 /** Keep in sync with api-server challengePlay Heavy Pull constants. */
-const UNIT_PER_TAP = 1.8;
 const MAX_POSITION = 100;
-const BURST_INTERVAL_MS = 2_500;
-const BURST_SNAP = 8;
+const CHARGE_MS = 1_100;
+const HEAVE_POWER_MAX = 32;
+const MIN_CHARGE_TO_HEAVE = 0.18;
+const DRAG_PER_SEC = 14;
+const TICK_MS = 50;
 
 function formatPoints(n: number, locale: string): string {
   try {
@@ -76,8 +78,11 @@ export default function HeavyPullScreen() {
   const [phase, setPhase] = useState<Phase>("booting");
   const [countdown, setCountdown] = useState(3);
   const [timeLeftMs, setTimeLeftMs] = useState(10_000);
-  const [taps, setTaps] = useState(0);
+  const [heaves, setHeaves] = useState(0);
   const [position, setPosition] = useState(0);
+  const [peak, setPeak] = useState(0);
+  const [charge, setCharge] = useState(0);
+  const [holding, setHolding] = useState(false);
   const [result, setResult] = useState<ChallengeCompleteResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [claimingX2, setClaimingX2] = useState(false);
@@ -86,14 +91,20 @@ export default function HeavyPullScreen() {
 
   const playTokenRef = useRef<string | null>(null);
   const durationMsRef = useRef(10_000);
-  const tapsRef = useRef(0);
+  const heavesRef = useRef(0);
   const positionRef = useRef(0);
+  const peakRef = useRef(0);
+  const chargeRef = useRef(0);
+  const holdingRef = useRef(false);
+  const holdStartedAtRef = useRef(0);
   const submittedRef = useRef(false);
+  const lastTickRef = useRef(0);
+
   const pulse = useRef(new Animated.Value(1)).current;
   const pullProgress = useRef(new Animated.Value(0)).current;
+  const chargeAnim = useRef(new Animated.Value(0)).current;
   const charBob = useRef(new Animated.Value(0)).current;
-  const flashOpacity = useRef(new Animated.Value(0)).current;
-  const burstFlash = useRef(new Animated.Value(0)).current;
+  const heaveFlash = useRef(new Animated.Value(0)).current;
   const arenaShake = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -104,51 +115,30 @@ export default function HeavyPullScreen() {
     (pos: number) => {
       Animated.spring(pullProgress, {
         toValue: Math.min(1, pos / MAX_POSITION),
-        friction: 7,
-        tension: 70,
+        friction: 8,
+        tension: 60,
         useNativeDriver: false,
       }).start();
     },
     [pullProgress],
   );
 
-  const applyBurst = useCallback(() => {
-    const next = Math.max(0, positionRef.current - BURST_SNAP);
-    positionRef.current = next;
-    setPosition(Math.floor(next));
-    syncVisual(next);
-    feedbackTick(true);
-
-    burstFlash.setValue(1);
-    Animated.timing(burstFlash, {
-      toValue: 0,
-      duration: 420,
-      useNativeDriver: true,
-    }).start();
-
-    arenaShake.setValue(0);
-    Animated.sequence([
-      Animated.timing(arenaShake, { toValue: 8, duration: 40, useNativeDriver: true }),
-      Animated.timing(arenaShake, { toValue: -8, duration: 50, useNativeDriver: true }),
-      Animated.timing(arenaShake, { toValue: 5, duration: 40, useNativeDriver: true }),
-      Animated.timing(arenaShake, { toValue: 0, duration: 50, useNativeDriver: true }),
-    ]).start();
-  }, [arenaShake, burstFlash, syncVisual]);
-
   const finishAndSubmit = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
+    holdingRef.current = false;
+    setHolding(false);
     setPhase("submitting");
     try {
       const session = await ensureSession();
       const playToken = playTokenRef.current;
       if (!playToken) throw new Error("missing_token");
-      const finalPosition = Math.max(0, Math.min(MAX_POSITION, Math.floor(positionRef.current)));
+      const peakPosition = Math.max(0, Math.min(MAX_POSITION, Math.floor(peakRef.current)));
       const res = await completeHeavyPull(
         {
           playToken,
-          tapCount: tapsRef.current,
-          finalPosition,
+          tapCount: heavesRef.current,
+          finalPosition: peakPosition,
         },
         session.token,
       );
@@ -205,62 +195,123 @@ export default function HeavyPullScreen() {
     return () => clearTimeout(id);
   }, [phase, countdown]);
 
+  /** Physics loop: charge while held, constant drag, timer. */
   useEffect(() => {
     if (phase !== "playing") return;
     const started = Date.now();
     const duration = durationMsRef.current;
-    const tickId = setInterval(() => {
-      const left = Math.max(0, duration - (Date.now() - started));
+    lastTickRef.current = started;
+
+    const id = setInterval(() => {
+      const now = Date.now();
+      const dt = Math.min(0.12, (now - lastTickRef.current) / 1000);
+      lastTickRef.current = now;
+
+      const left = Math.max(0, duration - (now - started));
       setTimeLeftMs(left);
       if (left <= 0) {
-        clearInterval(tickId);
+        clearInterval(id);
         finishAndSubmit();
+        return;
       }
-    }, 50);
 
-    const burstId = setInterval(() => {
-      applyBurst();
-    }, BURST_INTERVAL_MS);
+      // Charge while holding
+      if (holdingRef.current) {
+        const heldMs = now - holdStartedAtRef.current;
+        const nextCharge = Math.min(1, heldMs / CHARGE_MS);
+        chargeRef.current = nextCharge;
+        setCharge(nextCharge);
+        chargeAnim.setValue(nextCharge);
+      }
 
-    return () => {
-      clearInterval(tickId);
-      clearInterval(burstId);
-    };
-  }, [phase, finishAndSubmit, applyBurst]);
+      // Constant drag (even while charging — weight keeps pulling back)
+      if (positionRef.current > 0) {
+        const nextPos = Math.max(0, positionRef.current - DRAG_PER_SEC * dt);
+        positionRef.current = nextPos;
+        setPosition(Math.floor(nextPos));
+        syncVisual(nextPos);
+      }
+    }, TICK_MS);
 
-  const onPull = () => {
-    if (phase !== "playing") return;
-    tapsRef.current += 1;
-    setTaps(tapsRef.current);
+    return () => clearInterval(id);
+  }, [phase, finishAndSubmit, syncVisual, chargeAnim]);
 
-    const next = Math.min(MAX_POSITION, positionRef.current + UNIT_PER_TAP);
-    positionRef.current = next;
-    setPosition(Math.floor(next));
-    syncVisual(next);
+  const releaseHeave = useCallback(() => {
+    if (phase !== "playing" || !holdingRef.current) return;
+    holdingRef.current = false;
+    setHolding(false);
+
+    const charged = chargeRef.current;
+    chargeRef.current = 0;
+    setCharge(0);
+    Animated.timing(chargeAnim, {
+      toValue: 0,
+      duration: 120,
+      useNativeDriver: false,
+    }).start();
+
+    if (charged < MIN_CHARGE_TO_HEAVE) {
+      feedbackTick(true);
+      return;
+    }
+
+    const power = charged * HEAVE_POWER_MAX;
+    const nextPos = Math.min(MAX_POSITION, positionRef.current + power);
+    positionRef.current = nextPos;
+    setPosition(Math.floor(nextPos));
+    if (nextPos > peakRef.current) {
+      peakRef.current = nextPos;
+      setPeak(Math.floor(nextPos));
+    }
+    heavesRef.current += 1;
+    setHeaves(heavesRef.current);
+    syncVisual(nextPos);
     feedbackPull();
 
-    pulse.setValue(0.92);
+    pulse.setValue(0.88);
     Animated.spring(pulse, {
       toValue: 1,
       friction: 4,
-      tension: 140,
+      tension: 160,
       useNativeDriver: true,
     }).start();
 
-    charBob.setValue(-6);
+    charBob.setValue(-14);
     Animated.spring(charBob, {
       toValue: 0,
       friction: 5,
-      tension: 120,
+      tension: 100,
       useNativeDriver: true,
     }).start();
 
-    flashOpacity.setValue(1);
-    Animated.timing(flashOpacity, {
+    heaveFlash.setValue(1);
+    Animated.timing(heaveFlash, {
       toValue: 0,
-      duration: 200,
+      duration: 380,
       useNativeDriver: true,
     }).start();
+
+    arenaShake.setValue(0);
+    Animated.sequence([
+      Animated.timing(arenaShake, { toValue: 10, duration: 35, useNativeDriver: true }),
+      Animated.timing(arenaShake, { toValue: -10, duration: 45, useNativeDriver: true }),
+      Animated.timing(arenaShake, { toValue: 6, duration: 35, useNativeDriver: true }),
+      Animated.timing(arenaShake, { toValue: 0, duration: 45, useNativeDriver: true }),
+    ]).start();
+  }, [phase, chargeAnim, syncVisual, pulse, charBob, heaveFlash, arenaShake]);
+
+  const onPressIn = () => {
+    if (phase !== "playing" || submittedRef.current) return;
+    holdingRef.current = true;
+    holdStartedAtRef.current = Date.now();
+    chargeRef.current = 0;
+    setCharge(0);
+    setHolding(true);
+    chargeAnim.setValue(0);
+  };
+
+  const onPressOut = () => {
+    releaseHeave();
   };
 
   const onClaimX2 = async () => {
@@ -314,10 +365,19 @@ export default function HeavyPullScreen() {
     inputRange: [0, 1],
     outputRange: [0, -MAX_PULL_PX],
   });
-  const meterWidth = pullProgress.interpolate({
+  const strengthWidth = pullProgress.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
   });
+  const chargeWidth = chargeAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+  const btnLabel = holding
+    ? charge >= 0.95
+      ? t("game.heavyPull.release")
+      : t("game.heavyPull.charging")
+    : t("game.heavyPull.hold");
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom + 16 }]}>
@@ -363,21 +423,21 @@ export default function HeavyPullScreen() {
               <Text style={styles.timerUnit}>s</Text>
             </Text>
             <View style={styles.hudRight}>
-              <Text style={styles.positionVal}>{position}</Text>
-              <Text style={styles.positionLabel}>{t("game.heavyPull.position")}</Text>
+              <Text style={styles.peakVal}>{Math.max(peak, Math.floor(position))}</Text>
+              <Text style={styles.peakLabel}>{t("game.heavyPull.peak")}</Text>
             </View>
           </View>
 
-          <View style={styles.meterTrack}>
-            <Animated.View
-              style={[styles.meterFill, { width: meterWidth, backgroundColor: teamColor }]}
-            />
+          <View style={styles.meterBlock}>
+            <View style={styles.meterTrack}>
+              <Animated.View
+                style={[styles.meterFill, { width: strengthWidth, backgroundColor: teamColor }]}
+              />
+            </View>
+            <Text style={styles.meterLabel}>{t("game.heavyPull.powerMeter")}</Text>
           </View>
-          <Text style={styles.meterLabel}>{t("game.heavyPull.powerMeter")}</Text>
 
-          <Animated.View
-            style={[styles.arena, { transform: [{ translateX: arenaShake }] }]}
-          >
+          <Animated.View style={[styles.arena, { transform: [{ translateX: arenaShake }] }]}>
             <Animated.View style={[styles.charSlot, { transform: [{ translateX: charBob }] }]}>
               <Image
                 source={require("@/assets/images/character.png")}
@@ -395,11 +455,8 @@ export default function HeavyPullScreen() {
                 style={styles.ropeImg}
                 resizeMode="stretch"
               />
-              <Animated.Text style={[styles.plusFlash, { opacity: flashOpacity }]}>
-                +
-              </Animated.Text>
-              <Animated.Text style={[styles.burstFlash, { opacity: burstFlash }]}>
-                −{BURST_SNAP}
+              <Animated.Text style={[styles.heaveFlash, { opacity: heaveFlash }]}>
+                {t("game.heavyPull.heave")}
               </Animated.Text>
             </View>
 
@@ -412,20 +469,43 @@ export default function HeavyPullScreen() {
               >
                 <AppIcon name="fitness" size={28} color={rivalColor} />
               </View>
-              <Text style={styles.oppTag}>{t("game.heavyPull.resistance")}</Text>
+              <Text style={styles.oppTag}>{t("game.heavyPull.weight")}</Text>
             </Animated.View>
           </Animated.View>
 
+          <View style={styles.chargeBlock}>
+            <View style={styles.chargeTrack}>
+              <Animated.View
+                style={[
+                  styles.chargeFill,
+                  {
+                    width: chargeWidth,
+                    backgroundColor: charge >= 0.95 ? theme.gold : theme.ember,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.chargeLabel}>{t("game.heavyPull.chargeMeter")}</Text>
+          </View>
+
           <Animated.View style={{ transform: [{ scale: pulse }], width: "100%" }}>
             <Pressable
-              style={[styles.pullBtn, { backgroundColor: teamColor }]}
-              onPress={onPull}
+              style={[
+                styles.pullBtn,
+                { backgroundColor: holding ? theme.ember : teamColor },
+                holding && charge >= 0.95 && styles.pullBtnReady,
+              ]}
+              onPressIn={onPressIn}
+              onPressOut={onPressOut}
+              onResponderTerminate={onPressOut}
             >
-              <Text style={styles.pullBtnText}>{t("common.pull")}</Text>
+              <Text style={styles.pullBtnText}>{btnLabel}</Text>
             </Pressable>
           </Animated.View>
           <Text style={styles.hint}>{t("game.heavyPull.playHint")}</Text>
-          <Text style={styles.tapHint}>{t("game.heavyPull.taps", { count: taps })}</Text>
+          <Text style={styles.heaveHint}>
+            {t("game.heavyPull.heaves", { count: heaves })}
+          </Text>
         </View>
       ) : null}
 
@@ -436,7 +516,7 @@ export default function HeavyPullScreen() {
           <Text style={styles.resultPoints}>+{formatPoints(totalPoints, locale)}</Text>
           <Text style={styles.hint}>
             {t("game.heavyPull.resultDetail", {
-              position: result.finalPosition ?? position,
+              position: result.finalPosition ?? Math.floor(peak),
               count: result.tapCount,
             })}
           </Text>
@@ -498,7 +578,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingBottom: 8,
-    gap: 8,
+    gap: 6,
   },
   hudRow: {
     width: "100%",
@@ -516,14 +596,15 @@ const styles = StyleSheet.create({
   timer: { fontFamily: theme.fonts.display, fontSize: 48, color: theme.text },
   timerUnit: { fontSize: 22, color: theme.textMuted },
   timerUrgent: { color: theme.danger },
-  positionVal: { fontFamily: theme.fonts.display, fontSize: 36, color: theme.ropeSoft },
-  positionLabel: {
+  peakVal: { fontFamily: theme.fonts.display, fontSize: 36, color: theme.gold },
+  peakLabel: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 11,
     color: theme.textDim,
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
+  meterBlock: { width: "100%", gap: 4 },
   meterTrack: {
     width: "100%",
     height: 10,
@@ -541,7 +622,25 @@ const styles = StyleSheet.create({
     color: theme.textDim,
     letterSpacing: 0.8,
     textTransform: "uppercase",
-    marginTop: -4,
+  },
+  chargeBlock: { width: "100%", gap: 4 },
+  chargeTrack: {
+    width: "100%",
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: theme.surface,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  chargeFill: { height: "100%", borderRadius: 7 },
+  chargeLabel: {
+    alignSelf: "flex-start",
+    fontFamily: theme.fonts.semiBold,
+    fontSize: 11,
+    color: theme.textDim,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   arena: {
     width: "100%",
@@ -554,7 +653,7 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     paddingVertical: 18,
     paddingHorizontal: 10,
-    minHeight: 150,
+    minHeight: 140,
   },
   charSlot: { width: CHAR_SIZE + 8, alignItems: "center", zIndex: 2 },
   charImg: { width: CHAR_SIZE, height: CHAR_SIZE },
@@ -572,18 +671,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   ropeImg: { width: "100%", height: 18 },
-  plusFlash: {
+  heaveFlash: {
     position: "absolute",
-    fontFamily: theme.fonts.display,
-    fontSize: 28,
-    color: theme.gold,
-  },
-  burstFlash: {
-    position: "absolute",
-    top: -18,
     fontFamily: theme.fonts.display,
     fontSize: 22,
-    color: theme.danger,
+    color: theme.gold,
+    letterSpacing: 1,
   },
   oppSlot: { width: OPP_SIZE + 16, alignItems: "center", zIndex: 1 },
   oppBlob: {
@@ -607,11 +700,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  pullBtnReady: {
+    borderWidth: 2,
+    borderColor: theme.gold,
+  },
   pullBtnText: {
     fontFamily: theme.fonts.display,
-    fontSize: 40,
+    fontSize: 32,
     color: theme.white,
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   hint: {
     fontFamily: theme.fonts.regular,
@@ -620,7 +717,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 12,
   },
-  tapHint: {
+  heaveHint: {
     fontFamily: theme.fonts.semiBold,
     fontSize: 12,
     color: theme.textDim,

@@ -2,7 +2,8 @@
  * Online challenge play: signed sessions, cooldown, scoring, x2 claims.
  *
  * Rapid Pull: 15s tap race. Score = tap count (~80–120 typical).
- * Heavy Pull: 10s tug vs resistance bursts. Score = final position 0–100 (~25–50 typical).
+ * Heavy Pull: 10s hold-to-charge / release heaves vs constant drag.
+ *   Score = peak strength 0–100 (~25–50 typical). API reuses tapCount = heaveCount.
  */
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
@@ -30,16 +31,18 @@ export const RAPID_PULL_MIN_ELAPSED_MS = 13_500;
 export const RAPID_PULL_MAX_ELAPSED_MS = 22_000;
 export const RAPID_PULL_MAX_TAPS = 270;
 
-/** Heavy Pull: slower tug with periodic snap-back resistance. */
+/** Heavy Pull: hold-to-charge heaves against constant drag. */
 export const HEAVY_PULL_DURATION_MS = 10_000;
 export const HEAVY_PULL_MIN_ELAPSED_MS = 10_000;
 export const HEAVY_PULL_MAX_ELAPSED_MS = 18_000;
-export const HEAVY_PULL_UNIT_PER_TAP = 1.8;
 export const HEAVY_PULL_MAX_POSITION = 100;
-export const HEAVY_PULL_MAX_TAPS = 200;
-/** Client-side feel constants (mirrored on mobile). */
-export const HEAVY_PULL_BURST_INTERVAL_MS = 2_500;
-export const HEAVY_PULL_BURST_SNAP = 8;
+/** Max heaves in a round (anti-cheat). ~1 heave / 0.7s theoretical. */
+export const HEAVY_PULL_MAX_HEAVES = 14;
+/** Full-charge heave power — also cheat ceiling per heave. */
+export const HEAVY_PULL_MAX_PER_HEAVE = 32;
+/** Client feel (mirrored on mobile). */
+export const HEAVY_PULL_CHARGE_MS = 1_100;
+export const HEAVY_PULL_DRAG_PER_SEC = 14;
 
 const PLAY_TOKEN_TTL_MS = 90_000;
 const X2_CLAIM_TTL_MS = 5 * 60_000;
@@ -203,16 +206,15 @@ function scoreRapidPull(tapCount: number): number {
 }
 
 /**
- * Heavy Pull score = final pull position, capped by tap economics so clients
- * cannot invent progress without taps. Resistance is client feel; cheat ceiling
- * is still tapCount * UNIT.
+ * Heavy Pull score = peak strength reached.
+ * tapCount is heave count (released charges). Cap by heave economics.
  */
-function scoreHeavyPull(tapCount: number, finalPosition: number): number {
-  const taps = Math.max(0, Math.floor(tapCount));
-  if (taps > HEAVY_PULL_MAX_TAPS) throw new Error("tap_count_invalid");
-  const claimed = Math.max(0, Math.floor(finalPosition));
-  const maxByTaps = Math.floor(taps * HEAVY_PULL_UNIT_PER_TAP + 0.0001);
-  const capped = Math.min(claimed, maxByTaps, HEAVY_PULL_MAX_POSITION);
+function scoreHeavyPull(heaveCount: number, peakPosition: number): number {
+  const heaves = Math.max(0, Math.floor(heaveCount));
+  if (heaves > HEAVY_PULL_MAX_HEAVES) throw new Error("tap_count_invalid");
+  const claimed = Math.max(0, Math.floor(peakPosition));
+  const maxByHeaves = heaves * HEAVY_PULL_MAX_PER_HEAVE;
+  const capped = Math.min(claimed, maxByHeaves, HEAVY_PULL_MAX_POSITION);
   return Math.max(0, capped);
 }
 
