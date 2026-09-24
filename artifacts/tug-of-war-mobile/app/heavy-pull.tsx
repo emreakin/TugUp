@@ -30,12 +30,14 @@ import { feedbackPull, feedbackTick, feedbackWin, preloadFeedback } from "@/lib/
 type Phase = "booting" | "countdown" | "playing" | "submitting" | "result" | "error";
 
 /** Keep in sync with api-server challengePlay Heavy Pull constants. */
-const MAX_POSITION = 100;
-const FALL_PER_SEC = 80;
-const FALL_WHILE_GRIP = 36;
-const DRAG_RESISTANCE = 0.32;
+const MAX_POSITION = 50;
+const FALL_PER_SEC = 95;
+const FALL_WHILE_GRIP = 45;
+/** After release, hold still briefly so a yank doesn't instantly drop. */
+const HANG_MS = 400;
+const DRAG_RESISTANCE = 0.26;
 const TICK_MS = 32;
-const MARKS = [25, 50, 75, 100];
+const MARKS = [10, 20, 30, 40, 50];
 /** Top band reserved for the lifter avatar (not part of lift range). */
 const LIFTER_BAND = 0.22;
 const WEIGHT_SIZE = 72;
@@ -51,7 +53,7 @@ function formatPoints(n: number, locale: string): string {
 /** Higher = harder. Near the top, each yank barely moves the weight. */
 function heightResistance(h: number): number {
   const t = Math.max(0, Math.min(1, h / MAX_POSITION));
-  return Math.max(0.1, 1 - Math.pow(t, 1.15) * 0.88);
+  return Math.max(0.08, 1 - Math.pow(t, 1.1) * 0.9);
 }
 
 export default function HeavyPullScreen() {
@@ -96,6 +98,7 @@ export default function HeavyPullScreen() {
   const effortRef = useRef(0);
   const draggingRef = useRef(false);
   const lastPageYRef = useRef(0);
+  const releasedAtRef = useRef<number | null>(null);
   const submittedRef = useRef(false);
   const lastTickRef = useRef(0);
   const lastFeedbackPeakRef = useRef(0);
@@ -198,10 +201,20 @@ export default function HeavyPullScreen() {
       }
 
       if (heightRef.current > 0) {
-        const fallRate = draggingRef.current ? FALL_WHILE_GRIP : FALL_PER_SEC;
-        const next = Math.max(0, heightRef.current - fallRate * dt);
-        heightRef.current = next;
-        setHeight(Math.floor(next));
+        let fallRate = FALL_PER_SEC;
+        if (draggingRef.current) {
+          fallRate = FALL_WHILE_GRIP;
+        } else if (
+          releasedAtRef.current != null &&
+          now - releasedAtRef.current < HANG_MS
+        ) {
+          fallRate = 0;
+        }
+        if (fallRate > 0) {
+          const next = Math.max(0, heightRef.current - fallRate * dt);
+          heightRef.current = next;
+          setHeight(Math.floor(next));
+        }
       }
     }, TICK_MS);
 
@@ -234,6 +247,7 @@ export default function HeavyPullScreen() {
   const onGrabStart = (pageY: number) => {
     if (phase !== "playing" || submittedRef.current) return;
     draggingRef.current = true;
+    releasedAtRef.current = null;
     setDragging(true);
     lastPageYRef.current = pageY;
   };
@@ -253,6 +267,7 @@ export default function HeavyPullScreen() {
   const onGrabEnd = () => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
+    releasedAtRef.current = Date.now();
     setDragging(false);
   };
 

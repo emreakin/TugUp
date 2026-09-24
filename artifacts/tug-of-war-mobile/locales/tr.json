@@ -316,7 +316,7 @@
       },
       "perfectPull": {
         "title": "Usta Çekiş",
-        "subtitle": "Doğru anda çek"
+        "subtitle": "Tam isabet — 5 çekiş"
       }
     },
     "rapidPull": {
@@ -347,7 +347,7 @@
       "countdownHint": "Tutamacı YUKARI kaydır!",
       "go": "BAŞLA!",
       "instruction": "Ağırlığı kaldırmak için YUKARI çek",
-      "playHint": "Bırakırsan hızla düşer. Yukarı çıktıkça ağırlaşır. Sürekli çek!",
+      "playHint": "Bırakırsan hızla düşer. Yukarı çıktıkça ağırlaşır. Maksimum 50 puan.",
       "peak": "En iyi",
       "weight": "Ağırlık",
       "resultTitle": "Kazanılan puan",
@@ -358,6 +358,38 @@
       "backToBattle": "Savaşa dön",
       "errorTitle": "Challenge başarısız",
       "startFailed": "Güç Çekişi başlatılamadı. Tekrar dene.",
+      "submitFailed": "Skor gönderilemedi. Tekrar dene.",
+      "missingMatchup": "Mücadele bulunamadı.",
+      "onCooldown": "Yaklaşık {{minutes}} dk sonra tekrar hazır.",
+      "readyIn": "{{time}} sonra hazır"
+    },
+    "perfectPull": {
+      "preparing": "Challenge hazırlanıyor…",
+      "submitting": "Skorun kaydediliyor…",
+      "countdownHint": "İbre altın merkeze gelince dokun!",
+      "go": "BAŞLA!",
+      "instruction": "Tam isabet anında çek",
+      "playHint": "5 tur. Merkez = 4 puan. Maks 20. Her turda hızlanır.",
+      "round": "Tur {{current}} / {{total}}",
+      "scoreOf": "/ {{max}}",
+      "legendMiss": "Kaçırdı",
+      "legendPerfect": "Usta",
+      "grade": {
+        "perfect": "USTA +{{points}}",
+        "great": "SÜPER +{{points}}",
+        "good": "İYİ +{{points}}",
+        "ok": "OLUR +{{points}}",
+        "miss": "KAÇTI"
+      },
+      "resultTitle": "Kazanılan puan",
+      "resultDetail": "{{score}} / {{max}} · {{rounds}} çekiş",
+      "watchAdX2": "Reklam izle → ×2  (bugün {{remaining}} hak)",
+      "x2Applied": "×2 uygulandı!",
+      "x2Failed": "×2 uygulanamadı. Temel skorun zaten kaydedildi.",
+      "x2OddOnly": "×2 her iki Usta Çekiş'ten birinde açılır.",
+      "backToBattle": "Savaşa dön",
+      "errorTitle": "Challenge başarısız",
+      "startFailed": "Usta Çekiş başlatılamadı. Tekrar dene.",
       "submitFailed": "Skor gönderilemedi. Tekrar dene.",
       "missingMatchup": "Mücadele bulunamadı.",
       "onCooldown": "Yaklaşık {{minutes}} dk sonra tekrar hazır.",

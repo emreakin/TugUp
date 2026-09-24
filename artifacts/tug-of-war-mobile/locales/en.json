@@ -316,7 +316,7 @@
       },
       "perfectPull": {
         "title": "Perfect Pull",
-        "subtitle": "Pull at the right moment"
+        "subtitle": "Hit the sweet spot — 5 pulls"
       }
     },
     "rapidPull": {
@@ -347,7 +347,7 @@
       "countdownHint": "Drag the handle UP the track!",
       "go": "GO!",
       "instruction": "Drag UP to lift the weight",
-      "playHint": "Let go and it drops fast. Higher up = much heavier. Keep yanking!",
+      "playHint": "Let go and it drops fast. Higher up = much heavier. Max 50 points.",
       "peak": "Best",
       "weight": "Weight",
       "resultTitle": "Points earned",
@@ -358,6 +358,38 @@
       "backToBattle": "Back to battle",
       "errorTitle": "Challenge failed",
       "startFailed": "Couldn't start Heavy Pull. Try again.",
+      "submitFailed": "Couldn't submit score. Try again.",
+      "missingMatchup": "Missing matchup.",
+      "onCooldown": "Ready again in about {{minutes}} min.",
+      "readyIn": "Ready in {{time}}"
+    },
+    "perfectPull": {
+      "preparing": "Preparing challenge…",
+      "submitting": "Saving your score…",
+      "countdownHint": "Tap when the needle hits the gold center!",
+      "go": "GO!",
+      "instruction": "Pull at the perfect moment",
+      "playHint": "5 rounds. Center = 4 pts. Max 20. Gets faster each round.",
+      "round": "Round {{current}} / {{total}}",
+      "scoreOf": "of {{max}}",
+      "legendMiss": "Miss",
+      "legendPerfect": "Perfect",
+      "grade": {
+        "perfect": "PERFECT +{{points}}",
+        "great": "GREAT +{{points}}",
+        "good": "GOOD +{{points}}",
+        "ok": "OK +{{points}}",
+        "miss": "MISS"
+      },
+      "resultTitle": "Points earned",
+      "resultDetail": "{{score}} / {{max}} · {{rounds}} pulls",
+      "watchAdX2": "Watch ad → ×2  ({{remaining}} left today)",
+      "x2Applied": "×2 applied!",
+      "x2Failed": "Couldn't apply ×2. Your base score is already saved.",
+      "x2OddOnly": "×2 is available every other Perfect Pull.",
+      "backToBattle": "Back to battle",
+      "errorTitle": "Challenge failed",
+      "startFailed": "Couldn't start Perfect Pull. Try again.",
       "submitFailed": "Couldn't submit score. Try again.",
       "missingMatchup": "Missing matchup.",
       "onCooldown": "Ready again in about {{minutes}} min.",

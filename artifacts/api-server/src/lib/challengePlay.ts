@@ -3,7 +3,10 @@
  *
  * Rapid Pull: 15s tap race. Score = tap count (~80–120 typical).
  * Heavy Pull: 10s vertical drag strength test — yank the rope UP against gravity.
- *   Score = peak height 0–100. API: tapCount = upward effort units, finalPosition = peak.
+ *   Score = peak height 0–50. API: tapCount = upward effort units, finalPosition = peak.
+ * Perfect Pull: 5 timing taps on a swinging needle. Score 0–20 (skill).
+ *   API: tapCount = rounds played (1–5), finalPosition = claimed score.
+ *   x2 only on odd attempts (1,3,5…) via isPerfectPullX2Eligible.
  */
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
@@ -20,6 +23,7 @@ import {
   ONLINE_DAILY_X2_MAX,
   effectiveCooldownSeconds,
   isOnlineChallengeType,
+  isPerfectPullX2Eligible,
   remainingDailyX2,
   type OnlineChallengeType,
 } from "./onlineChallenges";
@@ -31,31 +35,45 @@ export const RAPID_PULL_MIN_ELAPSED_MS = 13_500;
 export const RAPID_PULL_MAX_ELAPSED_MS = 22_000;
 export const RAPID_PULL_MAX_TAPS = 270;
 
-/** Heavy Pull: vertical drag strength test vs gravity. */
+/** Heavy Pull: vertical drag strength test vs gravity. Max points = 50. */
 export const HEAVY_PULL_DURATION_MS = 10_000;
-export const HEAVY_PULL_MIN_ELAPSED_MS = 10_000;
-export const HEAVY_PULL_MAX_ELAPSED_MS = 18_000;
-export const HEAVY_PULL_MAX_POSITION = 100;
-/** Max upward effort units (sum of +height deltas) accepted from client. */
-export const HEAVY_PULL_MAX_EFFORT = 500;
-/** Client feel (mirrored on mobile) — hard near the top; falls even while gripping. */
-export const HEAVY_PULL_FALL_PER_SEC = 80;
-export const HEAVY_PULL_FALL_WHILE_GRIP = 36;
-export const HEAVY_PULL_DRAG_RESISTANCE = 0.32;
+/** Includes ~3s countdown before play. */
+export const HEAVY_PULL_MIN_ELAPSED_MS = 11_000;
+export const HEAVY_PULL_MAX_ELAPSED_MS = 24_000;
+export const HEAVY_PULL_MAX_POSITION = 50;
+/** Soft cap for effort units — clamp, don't reject (frantic lifting adds up). */
+export const HEAVY_PULL_MAX_EFFORT = 800;
+/** Client feel (mirrored on mobile). */
+export const HEAVY_PULL_FALL_PER_SEC = 95;
+export const HEAVY_PULL_FALL_WHILE_GRIP = 45;
+export const HEAVY_PULL_DRAG_RESISTANCE = 0.26;
+
+/** Perfect Pull: 5 timing rounds, max 4 pts each → 0–20. */
+export const PERFECT_PULL_ROUNDS = 5;
+export const PERFECT_PULL_MAX_PER_ROUND = 4;
+export const PERFECT_PULL_MAX_SCORE = PERFECT_PULL_ROUNDS * PERFECT_PULL_MAX_PER_ROUND;
+/** Soft max play window (countdown + rounds). Not a hard countdown on client. */
+export const PERFECT_PULL_DURATION_MS = 20_000;
+export const PERFECT_PULL_MIN_ELAPSED_MS = 4_000;
+export const PERFECT_PULL_MAX_ELAPSED_MS = 28_000;
 
 const PLAY_TOKEN_TTL_MS = 90_000;
 const X2_CLAIM_TTL_MS = 5 * 60_000;
 
-const IMPLEMENTED: OnlineChallengeType[] = ["rapid_pull", "heavy_pull"];
+const IMPLEMENTED: OnlineChallengeType[] = ["rapid_pull", "heavy_pull", "perfect_pull"];
 
 function durationFor(type: OnlineChallengeType): number {
   if (type === "heavy_pull") return HEAVY_PULL_DURATION_MS;
+  if (type === "perfect_pull") return PERFECT_PULL_DURATION_MS;
   return RAPID_PULL_DURATION_MS;
 }
 
 function elapsedBounds(type: OnlineChallengeType): { min: number; max: number } {
   if (type === "heavy_pull") {
     return { min: HEAVY_PULL_MIN_ELAPSED_MS, max: HEAVY_PULL_MAX_ELAPSED_MS };
+  }
+  if (type === "perfect_pull") {
+    return { min: PERFECT_PULL_MIN_ELAPSED_MS, max: PERFECT_PULL_MAX_ELAPSED_MS };
   }
   return { min: RAPID_PULL_MIN_ELAPSED_MS, max: RAPID_PULL_MAX_ELAPSED_MS };
 }
@@ -205,15 +223,47 @@ function scoreRapidPull(tapCount: number): number {
 }
 
 /**
- * Heavy Pull score = peak height on the strength track.
+ * Heavy Pull score = peak height on the strength track (max 50).
  * tapCount = upward effort (sum of positive height deltas). Cap peak by effort.
  */
 function scoreHeavyPull(effortUnits: number, peakPosition: number): number {
-  const effort = Math.max(0, Math.floor(effortUnits));
-  if (effort > HEAVY_PULL_MAX_EFFORT) throw new Error("tap_count_invalid");
+  const effort = Math.min(
+    HEAVY_PULL_MAX_EFFORT,
+    Math.max(0, Math.floor(effortUnits)),
+  );
   const claimed = Math.max(0, Math.floor(peakPosition));
   const capped = Math.min(claimed, effort, HEAVY_PULL_MAX_POSITION);
   return Math.max(0, capped);
+}
+
+/**
+ * Perfect Pull score = sum of timing hits (max 4 per round, 5 rounds → 20).
+ * tapCount = rounds completed; finalPosition = claimed total score.
+ */
+function scorePerfectPull(roundsPlayed: number, claimedScore: number): number {
+  const rounds = Math.max(0, Math.min(PERFECT_PULL_ROUNDS, Math.floor(roundsPlayed)));
+  const claimed = Math.max(0, Math.floor(claimedScore));
+  const maxByRounds = rounds * PERFECT_PULL_MAX_PER_ROUND;
+  return Math.max(0, Math.min(claimed, maxByRounds, PERFECT_PULL_MAX_SCORE));
+}
+
+async function getChallengePlayCount(
+  userId: string,
+  matchupId: string,
+  challengeType: OnlineChallengeType,
+): Promise<number> {
+  const rows = await db
+    .select({ playCount: onlineChallengeUserStateTable.playCount })
+    .from(onlineChallengeUserStateTable)
+    .where(
+      and(
+        eq(onlineChallengeUserStateTable.userId, userId),
+        eq(onlineChallengeUserStateTable.matchupId, matchupId),
+        eq(onlineChallengeUserStateTable.challengeType, challengeType),
+      ),
+    )
+    .limit(1);
+  return rows[0]?.playCount ?? 0;
 }
 
 async function bumpChallengeUserState(
@@ -359,7 +409,19 @@ export async function completeChallenge(params: {
     if (!Number.isFinite(pos)) throw new Error("position_invalid");
     pointsAwarded = scoreHeavyPull(tapCount, pos);
     finalPosition = pointsAwarded;
+  } else if (challengeType === "perfect_pull") {
+    const pos = Number(params.finalPosition);
+    if (!Number.isFinite(pos)) throw new Error("position_invalid");
+    if (tapCount > PERFECT_PULL_ROUNDS) throw new Error("tap_count_invalid");
+    pointsAwarded = scorePerfectPull(tapCount, pos);
+    finalPosition = pointsAwarded;
   }
+
+  const playCountBefore = await getChallengePlayCount(
+    params.userId,
+    matchupId,
+    challengeType,
+  );
 
   const battleState = await awardChallengePoints({
     matchupId,
@@ -371,10 +433,13 @@ export async function completeChallenge(params: {
 
   const usedX2 = await getDailyX2Used(params.userId);
   const x2Left = remainingDailyX2(usedX2);
+  const perfectX2Ok =
+    challengeType !== "perfect_pull" || isPerfectPullX2Eligible(playCountBefore);
   const canClaimX2 =
     pointsAwarded > 0 &&
     ONLINE_CHALLENGES[challengeType].supportsDoubleReward &&
-    x2Left > 0;
+    x2Left > 0 &&
+    perfectX2Ok;
 
   const x2ClaimToken = canClaimX2
     ? packToken({

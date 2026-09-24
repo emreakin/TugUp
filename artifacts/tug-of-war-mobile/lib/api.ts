@@ -228,7 +228,7 @@ export type ChallengeStatusesResponse = {
 
 export type ChallengeStartResponse = {
   playToken: string;
-  challengeType: "rapid_pull" | "heavy_pull";
+  challengeType: "rapid_pull" | "heavy_pull" | "perfect_pull";
   durationMs: number;
   startedAt: number;
 };
@@ -242,7 +242,7 @@ export type ChallengeCompleteResponse = {
   x2ClaimToken: string | null;
   x2RemainingToday: number;
   cooldownEndsAt: string;
-  challengeType: "rapid_pull" | "heavy_pull";
+  challengeType: "rapid_pull" | "heavy_pull" | "perfect_pull";
   side: BattleSide;
 };
 
@@ -276,7 +276,7 @@ export async function startOnlineChallenge(
   params: {
     matchupId: string;
     side: BattleSide;
-    challengeType: "rapid_pull" | "heavy_pull";
+    challengeType: "rapid_pull" | "heavy_pull" | "perfect_pull";
   },
   token: string,
 ): Promise<ChallengeStartResponse> {
@@ -327,6 +327,20 @@ export async function startHeavyPull(
 }
 
 export async function completeHeavyPull(
+  params: { playToken: string; tapCount: number; finalPosition: number },
+  token: string,
+): Promise<ChallengeCompleteResponse> {
+  return completeOnlineChallenge(params, token);
+}
+
+export async function startPerfectPull(
+  params: { matchupId: string; side: BattleSide },
+  token: string,
+): Promise<ChallengeStartResponse> {
+  return startOnlineChallenge({ ...params, challengeType: "perfect_pull" }, token);
+}
+
+export async function completePerfectPull(
   params: { playToken: string; tapCount: number; finalPosition: number },
   token: string,
 ): Promise<ChallengeCompleteResponse> {

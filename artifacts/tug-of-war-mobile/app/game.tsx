@@ -234,25 +234,33 @@ export default function OnlineBattleScreen() {
       Alert.alert(t("game.pickSideTitle"), t("game.pickSideMessage"));
       return;
     }
-    if (type === "perfect_pull") {
-      Alert.alert(
-        t("game.challenges.perfectPull.title"),
-        t("game.challengeComingSoon"),
-      );
-      return;
-    }
 
     const status = challengeStatus[type];
-    const titleKey =
-      type === "heavy_pull" ? "game.challenges.heavyPull.title" : "game.challenges.rapidPull.title";
-    const cooldownKey =
-      type === "heavy_pull" ? "game.heavyPull.onCooldown" : "game.rapidPull.onCooldown";
-    const startFailKey =
-      type === "heavy_pull" ? "game.heavyPull.startFailed" : "game.rapidPull.startFailed";
+    const meta =
+      type === "perfect_pull"
+        ? {
+            titleKey: "game.challenges.perfectPull.title",
+            cooldownKey: "game.perfectPull.onCooldown",
+            startFailKey: "game.perfectPull.startFailed",
+            path: "/perfect-pull" as const,
+          }
+        : type === "heavy_pull"
+          ? {
+              titleKey: "game.challenges.heavyPull.title",
+              cooldownKey: "game.heavyPull.onCooldown",
+              startFailKey: "game.heavyPull.startFailed",
+              path: "/heavy-pull" as const,
+            }
+          : {
+              titleKey: "game.challenges.rapidPull.title",
+              cooldownKey: "game.rapidPull.onCooldown",
+              startFailKey: "game.rapidPull.startFailed",
+              path: "/rapid-pull" as const,
+            };
 
     if (ONLINE_COOLDOWNS_ENABLED && status && !status.available) {
       const mins = Math.ceil(status.secondsRemaining / 60);
-      Alert.alert(t(titleKey), t(cooldownKey, { minutes: mins }));
+      Alert.alert(t(meta.titleKey), t(meta.cooldownKey, { minutes: mins }));
       return;
     }
 
@@ -261,7 +269,7 @@ export default function OnlineBattleScreen() {
     try {
       await ensureSession();
       router.push({
-        pathname: type === "heavy_pull" ? "/heavy-pull" : "/rapid-pull",
+        pathname: meta.path,
         params: {
           matchupId,
           side: selectedSide,
@@ -272,7 +280,7 @@ export default function OnlineBattleScreen() {
         },
       });
     } catch {
-      Alert.alert(t("common.error"), t(startFailKey));
+      Alert.alert(t("common.error"), t(meta.startFailKey));
     } finally {
       setStartingChallenge(false);
     }
